@@ -1,9 +1,13 @@
+import os
 import discord
 from discord import app_commands
 from discord.ext import commands
+from openai import OpenAI
 
-import os
 TOKEN = os.getenv("DISCORD_TOKEN")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
+client_ai = OpenAI(api_key=OPENAI_API_KEY)
 
 intents = discord.Intents.default()
 bot = commands.Bot(command_prefix="!", intents=intents)
@@ -19,7 +23,6 @@ crafting_data = {
         "Vintage Pistol": "5,000 Dirty Money\n3 Pistol Barrels\n3 Pistol Lower\n3 Pistol Upper",
         "Pistol Ammo": "1 Bullet\n1 Casing\n1 Gun Powder",
     },
-
     "Rifles": {
         "Assault Rifle": "15,000 Dirty Money\n2 Rifle Barrels\n2 Rifle Lowers\n1 Rifle Stock\n2 Rifle Uppers",
         "Bullpup Rifle": "15,000 Dirty Money\n1 Rifle Barrel\n2 Rifle Lowers\n1 Rifle Stock\n2 Rifle Uppers",
@@ -27,7 +30,6 @@ crafting_data = {
         "Military Rifle": "15,000 Dirty Money\n1 Rifle Barrel\n3 Rifle Lowers\n2 Rifle Stocks\n3 Rifle Uppers",
         "Rifle Ammo": "1 Bullet\n1 Casing\n1 Gun Powder",
     },
-
     "SMGs": {
         "Combat Pdw": "12,000 Dirty Money\n2 Rifle Barrels\n2 Rifle Lowers\n2 Rifle Stocks\n2 Rifle Uppers",
         "Micro Smg": "12,000 Dirty Money\n1 Rifle Barrel\n1 Rifle Lower\n1 Rifle Stock\n1 Rifle Upper",
@@ -35,21 +37,18 @@ crafting_data = {
         "Mk2 Smg": "12,000 Dirty Money\n1 Rifle Barrel\n1 Rifle Lower\n1 Rifle Stock\n1 Rifle Upper",
         "Smg Ammo": "1 Bullet\n1 Casing\n1 Gun Powder",
     },
-
     "Shotguns": {
         "Bullpup": "10,000 Dirty Money\n1 Shotgun Barrel\n2 Shotgun Reciever\n1 Shotgun Shock",
         "Mk2 Pump": "10,000 Dirty Money\n2 Shotgun Barrels\n2 Shotgun Recievers\n2 Shotgun Stocks",
         "Pump": "10,000 Dirty Money\n1 Shotgun Barrel\n1 Shotgun Reciever\n1 Shotgun Shock",
         "Shotgun Ammo": "1 Bullet\n1 Casing\n1 Gun Powder",
     },
-
     "LMGs": {
         "Combat Mg": "15,000 Dirty Money\n2 Rifle Barrel\n2 Rifle Lowers\n1 Rifle Stock\n2 Rifle Uppers",
         "Combat Mg Mk2": "15,000 Dirty Money\n2 Rifle Barrels\n3 Rifle Lowers\n1 Rifle Stock\n3 Rifle Uppers",
         "Gusenberg Sweeper": "15,000 Dirty Money\n1 Rifle Barrel\n3 Rifle Lowers\n1 Rifle Stock\n3 Rifle Uppers",
         "Lmg Ammo": "1 Bullet\n1 Casing\n1 Gun Powder",
     },
-
     "Chemicals": {
         "Aluminum Oxide": "10 Aluminum\n500 Dirty Money\n10 Plastic",
         "Blowtorch": "10 Aluminum\n500 Dirty Money\n10 Metal Scrap",
@@ -58,7 +57,6 @@ crafting_data = {
         "Sticky Bomb": "500 Dirty Money\n3 Electronic Kits\n10 Iron Powder\n10 Metal Scrap\n10 Plastic",
         "Thermite": "500 Dirty Money\n3 Electronic Kits\n10 Metal Scrap\n10 Plastic",
     },
-
     "Melee": {
         "Bat": "10 Aluminum\n2 Rubber",
         "Battle Axe": "20 Steel\n5 Plastic\n10 Metal Scrap",
@@ -69,7 +67,6 @@ crafting_data = {
         "Matchette": "10 Steel\n4 Plastic",
         "Switchblade": "12 Steel",
     },
-
     "Components": {
         "Pistol Barrel": "4 Caliper\n4 Lathe Bits\n4 Steel Block",
         "Pistol Lower": "2 Alumininum Block\n2 Caliper\n5 Milling Bit\n5 Screw\n2 Triggers",
@@ -88,6 +85,21 @@ locations = {
     "electronics bench": "images/gta_loco.png",
     "map": "images/gta_loco.png"
 }
+
+
+# =========================
+# HELPERS
+# =========================
+def build_guide_context() -> str:
+    lines = ["GTA crafting and location guide:"]
+    for category, items in crafting_data.items():
+        lines.append(f"\n[{category}]")
+        for item_name, recipe in items.items():
+            lines.append(f"- {item_name}: {recipe}")
+    lines.append("\n[Locations]")
+    for place in locations.keys():
+        lines.append(f"- {place}")
+    return "\n".join(lines)
 
 
 # =========================
@@ -196,6 +208,51 @@ async def location(interaction: discord.Interaction, place: str):
         await interaction.response.send_message(embed=embed, file=file)
     else:
         await interaction.response.send_message("Location not found.")
+
+
+@bot.tree.command(name="ask", description="Ask the bot anything")
+@app_commands.describe(question="Ask a question about the server, crafting, or locations")
+async def ask(interaction: discord.Interaction, question: str):
+    await interaction.response.defer()
+
+    if not OPENAI_API_KEY:
+        await interaction.followup.send("OPENAI_API_KEY is not set in Railway Variables.")
+        return
+
+    guide_context = build_guide_context()
+
+    try:
+        response = client_ai.responses.create(
+            model="gpt-5.4-mini",
+            input=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You are a helpful Discord bot for a GTA roleplay server. "
+                        "Answer clearly and directly. Use the provided server crafting "
+                        "and location guide when relevant. If the answer is not in the "
+                        "guide, say so and then give your best general answer."
+                    )
+                },
+                {
+                    "role": "user",
+                    "content": f"{guide_context}\n\nUser question: {question}"
+                }
+            ]
+        )
+
+        answer = response.output_text.strip()
+
+        if not answer:
+            answer = "I couldn't generate an answer."
+
+        if len(answer) > 1900:
+            answer = answer[:1900] + "..."
+
+        await interaction.followup.send(answer)
+
+    except Exception as e:
+        await interaction.followup.send(f"AI error: {e}")
 
 
 bot.run(TOKEN)
