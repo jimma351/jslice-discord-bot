@@ -27,7 +27,7 @@ SCOPES = [
     "https://www.googleapis.com/auth/drive"
 ]
 
-SHEET_NAME = "Forgotten Kings Inventory"
+SHEET_NAME = "BotInventory"
 WORKSHEET_NAME = "BotInventory"
 
 if not GOOGLE_CREDS:
