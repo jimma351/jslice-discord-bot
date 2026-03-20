@@ -3,6 +3,8 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 from openai import OpenAI
+import gspread
+from google.oauth2.service_account import Credentials
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
@@ -14,6 +16,26 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 # Simple per-user memory for follow-up questions
 user_memory = {}
+
+# Role allowed to edit inventory
+ALLOWED_ROLE = "FK"
+
+# =========================
+# GOOGLE SHEETS SETUP
+# =========================
+SCOPES = [
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive"
+]
+
+CREDS_FILE = "service_account.json"
+SHEET_NAME = "Forgotten Kings Inventory"
+WORKSHEET_NAME = "BotInventory"
+
+creds = Credentials.from_service_account_file(CREDS_FILE, scopes=SCOPES)
+gc = gspread.authorize(creds)
+sheet = gc.open(SHEET_NAME)
+inventory_ws = sheet.worksheet(WORKSHEET_NAME)
 
 # =========================
 # DATA
@@ -103,6 +125,18 @@ def build_guide_context() -> str:
         lines.append(f"- {place}")
     return "\n".join(lines)
 
+def has_fk_role(member: discord.Member) -> bool:
+    return any(role.name == ALLOWED_ROLE for role in member.roles)
+
+def find_item_row(item_name: str):
+    records = inventory_ws.get_all_values()
+    search = item_name.strip().lower()
+
+    for idx, row in enumerate(records[1:], start=2):
+        if len(row) >= 2 and row[0].strip().lower() == search:
+            return idx, row
+    return None, None
+
 # =========================
 # VIEWS
 # =========================
@@ -187,6 +221,125 @@ async def gta(interaction: discord.Interaction):
         view=view,
         ephemeral=False
     )
+
+@bot.tree.command(name="inventoryall", description="Show full inventory list")
+async def inventoryall(interaction: discord.Interaction):
+    await interaction.response.defer()
+
+    try:
+        records = inventory_ws.get_all_values()
+
+        if len(records) <= 1:
+            await interaction.followup.send("Inventory is empty, kid.")
+            return
+
+        items = records[1:]
+        lines = []
+
+        for row in items:
+            name = row[0] if len(row) > 0 else "Unknown"
+            qty = row[1] if len(row) > 1 else "0"
+            lines.append(f"• {name} — {qty}")
+
+        output = "\n".join(lines)
+
+        if len(output) > 1900:
+            output = output[:1900] + "\n... (too many items)"
+
+        embed = discord.Embed(
+            title="📦 Full Inventory",
+            description=output,
+            color=discord.Color.gold()
+        )
+
+        await interaction.followup.send(embed=embed)
+
+    except Exception as e:
+        await interaction.followup.send(f"Inventory error: {e}")
+
+@bot.tree.command(name="inventory", description="Check item quantity")
+@app_commands.describe(item="Item name")
+async def inventory(interaction: discord.Interaction, item: str):
+    await interaction.response.defer()
+
+    try:
+        row_num, row = find_item_row(item)
+
+        if not row:
+            await interaction.followup.send("Item not found, guy.")
+            return
+
+        qty = row[1] if len(row) > 1 else "0"
+
+        await interaction.followup.send(f"📦 {row[0]}: {qty}")
+
+    except Exception as e:
+        await interaction.followup.send(f"Inventory error: {e}")
+
+@bot.tree.command(name="additem", description="Add items to inventory")
+@app_commands.describe(item="Item name", amount="Amount to add")
+async def additem(interaction: discord.Interaction, item: str, amount: int):
+    await interaction.response.defer()
+
+    if not has_fk_role(interaction.user):
+        await interaction.followup.send("You ain't FK, kid. No touching inventory.")
+        return
+
+    if amount <= 0:
+        await interaction.followup.send("Use a number bigger than 0.")
+        return
+
+    try:
+        row_num, row = find_item_row(item)
+
+        if not row:
+            inventory_ws.append_row([item, amount])
+            await interaction.followup.send(f"🆕 Added new item **{item}** ({amount})")
+            return
+
+        current = int(row[1]) if len(row) > 1 and row[1].isdigit() else 0
+        new_total = current + amount
+
+        inventory_ws.update_cell(row_num, 2, new_total)
+
+        await interaction.followup.send(
+            f"➕ Added {amount} to **{row[0]}** (Now: {new_total})"
+        )
+
+    except Exception as e:
+        await interaction.followup.send(f"Inventory error: {e}")
+
+@bot.tree.command(name="removeitem", description="Remove items from inventory")
+@app_commands.describe(item="Item name", amount="Amount to remove")
+async def removeitem(interaction: discord.Interaction, item: str, amount: int):
+    await interaction.response.defer()
+
+    if not has_fk_role(interaction.user):
+        await interaction.followup.send("You ain't FK, kid. No touching inventory.")
+        return
+
+    if amount <= 0:
+        await interaction.followup.send("Use a number bigger than 0.")
+        return
+
+    try:
+        row_num, row = find_item_row(item)
+
+        if not row:
+            await interaction.followup.send("Item not found.")
+            return
+
+        current = int(row[1]) if len(row) > 1 and row[1].isdigit() else 0
+        new_total = max(0, current - amount)
+
+        inventory_ws.update_cell(row_num, 2, new_total)
+
+        await interaction.followup.send(
+            f"➖ Removed {amount} from **{row[0]}** (Now: {new_total})"
+        )
+
+    except Exception as e:
+        await interaction.followup.send(f"Inventory error: {e}")
 
 @bot.tree.command(name="location", description="Show server map location")
 @app_commands.describe(place="Location to show")
