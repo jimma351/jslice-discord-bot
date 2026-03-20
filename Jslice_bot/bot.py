@@ -12,6 +12,9 @@ client_ai = OpenAI(api_key=OPENAI_API_KEY)
 intents = discord.Intents.default()
 bot = commands.Bot(command_prefix="!", intents=intents)
 
+# Simple per-user memory for follow-up questions
+user_memory = {}
+
 # =========================
 # DATA
 # =========================
@@ -86,7 +89,6 @@ locations = {
     "map": "images/gta_loco.png"
 }
 
-
 # =========================
 # HELPERS
 # =========================
@@ -100,7 +102,6 @@ def build_guide_context() -> str:
     for place in locations.keys():
         lines.append(f"- {place}")
     return "\n".join(lines)
-
 
 # =========================
 # VIEWS
@@ -133,12 +134,10 @@ class ItemSelect(discord.ui.Select):
 
         await interaction.response.send_message(embed=embed, ephemeral=False)
 
-
 class ItemView(discord.ui.View):
     def __init__(self, category_name: str):
         super().__init__(timeout=120)
         self.add_item(ItemSelect(category_name))
-
 
 class CategorySelect(discord.ui.Select):
     def __init__(self):
@@ -164,12 +163,10 @@ class CategorySelect(discord.ui.Select):
             ephemeral=False
         )
 
-
 class CategoryView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=120)
         self.add_item(CategorySelect())
-
 
 # =========================
 # EVENTS
@@ -178,7 +175,6 @@ class CategoryView(discord.ui.View):
 async def on_ready():
     await bot.tree.sync()
     print(f"Logged in as {bot.user}")
-
 
 # =========================
 # COMMANDS
@@ -191,7 +187,6 @@ async def gta(interaction: discord.Interaction):
         view=view,
         ephemeral=False
     )
-
 
 @bot.tree.command(name="location", description="Show server map location")
 @app_commands.describe(place="Location to show")
@@ -209,7 +204,6 @@ async def location(interaction: discord.Interaction, place: str):
     else:
         await interaction.response.send_message("Location not found.")
 
-
 @bot.tree.command(name="ask", description="Ask the bot anything")
 @app_commands.describe(question="Ask a question about the server, crafting, or locations")
 async def ask(interaction: discord.Interaction, question: str):
@@ -220,6 +214,45 @@ async def ask(interaction: discord.Interaction, question: str):
         return
 
     guide_context = build_guide_context()
+    user_id = str(interaction.user.id)
+
+    if user_id not in user_memory:
+        user_memory[user_id] = []
+
+    user_memory[user_id].append({
+        "role": "user",
+        "content": question
+    })
+
+    user_memory[user_id] = user_memory[user_id][-6:]
+
+    system_prompt = (
+        "You are JSlice Crafting Guide, an in-character GTA RP server assistant with a Rhode Island attitude. "
+        "You are street-smart, sarcastic, and confident. You speak like a local who knows the city and the hustle. "
+        "You are helpful first, but you do not act like customer support.\n\n"
+
+        "Personality rules:\n"
+        "- Keep answers clear and useful.\n"
+        "- Use light Rhode Island flavor like kid, guy, c'mon now.\n"
+        "- Sound natural, not robotic.\n"
+        "- Do not overdo slang.\n\n"
+
+        "Behavior rules:\n"
+        "- Answer crafting questions directly.\n"
+        "- Answer location questions like a local.\n"
+        "- Use the provided guide when relevant.\n"
+        "- If info is not in the guide, say so and then give a general answer.\n\n"
+
+        "Toxic users:\n"
+        "- If the user is rude, respond with a short sarcastic clapback.\n"
+        "- Do not use slurs, threats, or extreme harassment.\n"
+        "- Stay in control.\n\n"
+
+        "Examples:\n"
+        "- Yeah yeah, ask it right and I'll help you.\n"
+        "- You good or you just talkin'?\n"
+        "- Don't make it harder than it needs to be."
+    )
 
     try:
         response = client_ai.responses.create(
@@ -227,17 +260,16 @@ async def ask(interaction: discord.Interaction, question: str):
             input=[
                 {
                     "role": "system",
-                    "content": (
-                        "You are a helpful Discord bot for a GTA roleplay server. "
-                        "Answer clearly and directly. Use the provided server crafting "
-                        "and location guide when relevant. If the answer is not in the "
-                        "guide, say so and then give your best general answer."
-                    )
+                    "content": system_prompt
                 },
                 {
-                    "role": "user",
-                    "content": f"{guide_context}\n\nUser question: {question}"
-                }
+                    "role": "system",
+                    "content": (
+                        f"Here is the server crafting and location guide:\n\n{guide_context}\n\n"
+                        "Use this guide when relevant."
+                    )
+                },
+                *user_memory[user_id]
             ]
         )
 
@@ -246,6 +278,13 @@ async def ask(interaction: discord.Interaction, question: str):
         if not answer:
             answer = "I couldn't generate an answer."
 
+        user_memory[user_id].append({
+            "role": "assistant",
+            "content": answer
+        })
+
+        user_memory[user_id] = user_memory[user_id][-6:]
+
         if len(answer) > 1900:
             answer = answer[:1900] + "..."
 
@@ -253,6 +292,5 @@ async def ask(interaction: discord.Interaction, question: str):
 
     except Exception as e:
         await interaction.followup.send(f"AI error: {e}")
-
 
 bot.run(TOKEN)
