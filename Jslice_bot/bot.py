@@ -1,4 +1,5 @@
 import os
+import json
 import discord
 from discord import app_commands
 from discord.ext import commands
@@ -8,16 +9,14 @@ from google.oauth2.service_account import Credentials
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+GOOGLE_CREDS = os.getenv("GOOGLE_CREDS")
 
 client_ai = OpenAI(api_key=OPENAI_API_KEY)
 
 intents = discord.Intents.default()
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# Simple per-user memory for follow-up questions
 user_memory = {}
-
-# Role allowed to edit inventory
 ALLOWED_ROLE = "FK"
 
 # =========================
@@ -28,11 +27,14 @@ SCOPES = [
     "https://www.googleapis.com/auth/drive"
 ]
 
-CREDS_FILE = "service_account.json"
 SHEET_NAME = "Forgotten Kings Inventory"
 WORKSHEET_NAME = "BotInventory"
 
-creds = Credentials.from_service_account_file(CREDS_FILE, scopes=SCOPES)
+if not GOOGLE_CREDS:
+    raise ValueError("GOOGLE_CREDS is not set in Railway Variables.")
+
+creds_dict = json.loads(GOOGLE_CREDS)
+creds = Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
 gc = gspread.authorize(creds)
 sheet = gc.open(SHEET_NAME)
 inventory_ws = sheet.worksheet(WORKSHEET_NAME)
@@ -270,7 +272,6 @@ async def inventory(interaction: discord.Interaction, item: str):
             return
 
         qty = row[1] if len(row) > 1 else "0"
-
         await interaction.followup.send(f"📦 {row[0]}: {qty}")
 
     except Exception as e:
