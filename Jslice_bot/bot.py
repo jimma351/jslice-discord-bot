@@ -36,8 +36,9 @@ if not GOOGLE_CREDS:
 creds_dict = json.loads(GOOGLE_CREDS)
 creds = Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
 gc = gspread.authorize(creds)
-sheet = gc.open(SHEET_NAME)
-inventory_ws = sheet.worksheet(WORKSHEET_NAME)
+SHEET_URL = "https://docs.google.com/spreadsheets/d/1O-OlLZrV7XII23TPF3weRgS64fBE7Zw2Hnea2Y9dg-Y/edit?usp=sharing"
+
+sheet = gc.open_by_url(SHEET_URL)
 
 # =========================
 # DATA
