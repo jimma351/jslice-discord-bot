@@ -13,12 +13,16 @@ from google.oauth2.service_account import Credentials
 TOKEN = os.getenv("DISCORD_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 GOOGLE_CREDS = os.getenv("GOOGLE_CREDS")
+SHEET_ID = os.getenv("SHEET_ID")
 
 if not TOKEN:
     raise ValueError("DISCORD_TOKEN is not set.")
 
 if not GOOGLE_CREDS:
     raise ValueError("GOOGLE_CREDS is not set.")
+
+if not SHEET_ID:
+    raise ValueError("SHEET_ID is not set.")
 
 client_ai = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
 
@@ -41,7 +45,6 @@ SCOPES = [
     "https://www.googleapis.com/auth/drive"
 ]
 
-SHEET_NAME = "BotInventory"
 WORKSHEET_NAME = "Sheet1"
 
 creds_dict = json.loads(GOOGLE_CREDS)
@@ -52,23 +55,30 @@ creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
 creds = Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
 gc = gspread.authorize(creds)
 
+# Open existing spreadsheet by ID
 try:
-    spreadsheet = gc.open(SHEET_NAME)
-except gspread.SpreadsheetNotFound:
-    spreadsheet = gc.create(SHEET_NAME)
+    spreadsheet = gc.open_by_key(SHEET_ID)
+except Exception as e:
+    raise RuntimeError(
+        f"Failed to open spreadsheet. Make sure SHEET_ID is correct and the sheet is shared with the service account email. Error: {e}"
+    )
 
+# Open existing worksheet only
 try:
     sheet = spreadsheet.worksheet(WORKSHEET_NAME)
 except gspread.WorksheetNotFound:
-    sheet = spreadsheet.add_worksheet(title=WORKSHEET_NAME, rows="1000", cols="10")
+    raise RuntimeError(
+        f"Worksheet '{WORKSHEET_NAME}' not found. Create it in your Google Sheet first."
+    )
 
 # Make sure headers exist
 headers = ["user_id", "username", "item_name", "quantity"]
 existing_headers = sheet.row_values(1)
 
-if existing_headers != headers:
-    sheet.clear()
+if not existing_headers:
     sheet.append_row(headers)
+elif existing_headers[:4] != headers:
+    sheet.update("A1:D1", [headers])
 
 # =========================
 # HELPER FUNCTIONS
@@ -79,7 +89,10 @@ def has_allowed_role(member: discord.Member) -> bool:
 def find_item_row(user_id: str, item_name: str):
     records = sheet.get_all_records()
     for idx, row in enumerate(records, start=2):  # row 2 because row 1 = headers
-        if str(row["user_id"]) == str(user_id) and str(row["item_name"]).lower() == item_name.lower():
+        if (
+            str(row.get("user_id")) == str(user_id)
+            and str(row.get("item_name", "")).lower() == item_name.lower()
+        ):
             return idx, row
     return None, None
 
@@ -87,7 +100,7 @@ def get_user_inventory(user_id: str):
     records = sheet.get_all_records()
     inventory = []
     for row in records:
-        if str(row["user_id"]) == str(user_id):
+        if str(row.get("user_id")) == str(user_id):
             inventory.append(row)
     return inventory
 
