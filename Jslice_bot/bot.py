@@ -34,7 +34,9 @@ if not GOOGLE_CREDS:
     raise ValueError("GOOGLE_CREDS is not set in Railway Variables.")
 
 creds_dict = json.loads(GOOGLE_CREDS)
-creds = Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
+
+# Fix newline issue in Railway
+creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
 gc = gspread.authorize(creds)
 
 sheet = gc.open(SHEET_NAME)
