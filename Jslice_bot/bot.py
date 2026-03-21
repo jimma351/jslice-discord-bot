@@ -28,7 +28,7 @@ SCOPES = [
 ]
 
 SHEET_NAME = "BotInventory"
-WORKSHEET_NAME = "BotInventory"
+WORKSHEET_NAME = "Sheet1"
 
 if not GOOGLE_CREDS:
     raise ValueError("GOOGLE_CREDS is not set in Railway Variables.")
