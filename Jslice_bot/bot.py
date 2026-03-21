@@ -95,10 +95,14 @@ def normalize_item_name(item_name: str) -> str:
 
 def find_item_row(item_name: str):
     records = sheet.get_all_records()
-    for idx, row in enumerate(records, start=2):  # row 2 because row 1 = headers
-        sheet_item = str(row.get("Item", "")).strip()
+
+    for idx, row in enumerate(records, start=2):
+        keys = {k.lower(): v for k, v in row.items()}
+        sheet_item = str(keys.get("item", "")).strip()
+
         if sheet_item.lower() == item_name.lower():
             return idx, row
+
     return None, None
 
 def get_inventory():
