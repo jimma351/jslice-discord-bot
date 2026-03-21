@@ -254,26 +254,53 @@ async def setitem(interaction: discord.Interaction, item_name: str, quantity: in
 
 @bot.tree.command(name="inventory", description="View the shared inventory")
 async def inventory(interaction: discord.Interaction):
-    items = get_inventory()
+    try:
+        items = get_inventory()
 
-    if not items:
-        await interaction.response.send_message("Inventory is empty.", ephemeral=True)
-        return
+        if not items:
+            await interaction.response.send_message("Inventory is empty.", ephemeral=True)
+            return
 
-    embed = discord.Embed(
-        title="Shared Inventory",
-        color=discord.Color.blue()
-    )
+        lines = []
+        for item in items:
+            name = str(item.get("Item", "Unknown")).strip()
+            qty = item.get("Quantity", 0)
+            lines.append(f"**{name}** — {qty}")
 
-    for item in items:
-        embed.add_field(
-            name=str(item.get("Item", "Unknown")),
-            value=f"Quantity: {item.get('Quantity', 0)}",
-            inline=False
+        chunks = []
+        current_chunk = ""
+
+        for line in lines:
+            if len(current_chunk) + len(line) + 1 > 4000:
+                chunks.append(current_chunk)
+                current_chunk = line
+            else:
+                if current_chunk:
+                    current_chunk += "\n"
+                current_chunk += line
+
+        if current_chunk:
+            chunks.append(current_chunk)
+
+        embed = discord.Embed(
+            title="Shared Inventory",
+            description=chunks[0],
+            color=discord.Color.blue()
         )
 
-    await interaction.response.send_message(embed=embed)
+        await interaction.response.send_message(embed=embed)
 
+        for chunk in chunks[1:]:
+            extra_embed = discord.Embed(
+                title="Shared Inventory (continued)",
+                description=chunk,
+                color=discord.Color.blue()
+            )
+            await interaction.followup.send(embed=extra_embed)
+
+    except Exception as e:
+        print(f"/inventory error: {e}")
+        await interaction.response.send_message(f"Inventory error: {e}", ephemeral=True)
 # =========================
 # OPTIONAL AI COMMAND
 # =========================
