@@ -35,12 +35,18 @@ if not GOOGLE_CREDS:
 
 creds_dict = json.loads(GOOGLE_CREDS)
 
-# Fix newline issue in Railway
+# FIX RAILWAY NEWLINES
 creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
+
+creds = Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
 gc = gspread.authorize(creds)
+
+print("Google creds loaded successfully")
 
 sheet = gc.open(SHEET_NAME)
 inventory_ws = sheet.worksheet(WORKSHEET_NAME)
+
+print("Connected to Google Sheets")
 
 # =========================
 # HELPERS
