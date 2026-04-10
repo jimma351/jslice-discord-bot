@@ -336,8 +336,6 @@ class CategoryView(discord.ui.View):
 async def on_ready():
     print(f"Logged in as {bot.user}", flush=True)
     try:
-        # Sync globally
-        bot.tree.clear_commands(guild=None)
         synced = await bot.tree.sync()
         print(f"Synced {len(synced)} global slash commands.", flush=True)
         for cmd in synced:
