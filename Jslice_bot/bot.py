@@ -791,3 +791,10 @@ async def spinwheel(interaction: discord.Interaction):
         embed.set_thumbnail(url=winner.avatar.url)
 
     await msg.edit(content="", embed=embed)
+
+
+# =========================
+# RUN BOT
+# =========================
+print("All commands registered, starting bot.run...", flush=True)
+bot.run(TOKEN)
