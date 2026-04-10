@@ -4,6 +4,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 from openai import OpenAI
+import anthropic
 import gspread
 from google.oauth2.service_account import Credentials
 
@@ -12,19 +13,19 @@ from google.oauth2.service_account import Credentials
 # =========================
 TOKEN = os.getenv("DISCORD_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 GOOGLE_CREDS = os.getenv("GOOGLE_CREDS")
 SHEET_ID = os.getenv("SHEET_ID")
 
 if not TOKEN:
     raise ValueError("DISCORD_TOKEN is not set.")
-
 if not GOOGLE_CREDS:
     raise ValueError("GOOGLE_CREDS is not set.")
-
 if not SHEET_ID:
     raise ValueError("SHEET_ID is not set.")
 
 client_ai = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
+client_claude = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY) if ANTHROPIC_API_KEY else None
 
 # =========================
 # DISCORD SETUP
@@ -151,10 +152,46 @@ crafting_data = {
     }
 }
 
-locations = {
-    "electronics bench": "images/gta_loco.png",
-    "map": "images/gta_loco.png"
-}
+MAP_URL = "https://gta-map-tau.vercel.app/"
+
+# =========================
+# CONVERSATION MEMORY
+# =========================
+openai_history = {}
+claude_history = {}
+MAX_HISTORY = 20
+
+# =========================
+# SYSTEM PROMPT
+# =========================
+def build_guide_context() -> str:
+    lines = ["GTA crafting and location guide:"]
+    for category, items in crafting_data.items():
+        lines.append(f"\n[{category}]")
+        for item_name, recipe in items.items():
+            lines.append(f"- {item_name}: {recipe}")
+    lines.append(f"\n[Map] Full interactive map: {MAP_URL}")
+    return "\n".join(lines)
+
+def build_system_prompt() -> str:
+    guide_context = build_guide_context()
+    return (
+        "You are JSlice, an AI assistant living inside a GTA RP Discord server. "
+        "You have a Rhode Island attitude — street-smart, sarcastic, confident, but always helpful. "
+        "You speak like a local who knows the city and the hustle. Natural, not robotic.\n\n"
+        "You can answer ANY question — not just crafting. If someone asks you about real life, "
+        "general knowledge, math, advice, whatever — you answer it, in your voice.\n\n"
+        "Personality rules:\n"
+        "- Keep answers clear and useful.\n"
+        "- Use light Rhode Island flavor like 'kid', 'guy', 'c'mon now' — but don't overdo it.\n"
+        "- Sound natural, not like customer support.\n\n"
+        "Toxic users:\n"
+        "- If someone is rude, respond with a short sarcastic clapback.\n"
+        "- No slurs, threats, or extreme language.\n"
+        "- Stay in control.\n\n"
+        "You also know the full crafting guide for this server:\n\n"
+        f"{guide_context}"
+    )
 
 # =========================
 # INVENTORY HELPERS
@@ -215,20 +252,6 @@ def set_item_quantity(item_name: str, quantity: int):
     else:
         sheet.append_row([item_name, quantity])
     return quantity
-
-# =========================
-# CRAFTING HELPERS
-# =========================
-def build_guide_context() -> str:
-    lines = ["GTA crafting and location guide:"]
-    for category, items in crafting_data.items():
-        lines.append(f"\n[{category}]")
-        for item_name, recipe in items.items():
-            lines.append(f"- {item_name}: {recipe}")
-    lines.append("\n[Locations]")
-    for place in locations.keys():
-        lines.append(f"- {place}")
-    return "\n".join(lines)
 
 # =========================
 # CRAFTING VIEWS
@@ -304,6 +327,64 @@ async def on_ready():
         print(f"Synced {len(synced)} slash commands.")
     except Exception as e:
         print(f"Slash command sync failed: {e}")
+
+# =========================
+# /help
+# =========================
+@bot.tree.command(name="help", description="Show all available bot commands")
+async def help_command(interaction: discord.Interaction):
+    embed = discord.Embed(
+        title="📋 JSlice Bot — Command List",
+        color=discord.Color.gold()
+    )
+
+    embed.add_field(
+        name="🗺️ Map & Crafting",
+        value=(
+            "`/gta` — Open the crafting menu (pick category → pick item)\n"
+            "`/location` — Get the interactive server map link\n"
+        ),
+        inline=False
+    )
+
+    embed.add_field(
+        name="🤖 AI Assistant",
+        value=(
+            "`/ask [question]` — Ask JSlice anything, powered by **OpenAI**\n"
+            "`/askclaude [question]` — Ask JSlice anything, powered by **Claude**\n"
+            "`/clearmemory` — Wipe JSlice's memory of your conversation\n"
+        ),
+        inline=False
+    )
+
+    embed.add_field(
+        name="📦 Inventory** (FK role required)**",
+        value=(
+            "`/additem [item] [qty]` — Add items to the shared inventory\n"
+            "`/removeitem [item] [qty]` — Remove items from the shared inventory\n"
+            "`/setitem [item] [qty]` — Set an exact quantity for an item\n"
+            "`/inventory` — View the full shared inventory\n"
+        ),
+        inline=False
+    )
+
+    embed.set_footer(text="JSlice Crafting Guide • GTA RP Server")
+    await interaction.response.send_message(embed=embed)
+
+
+# =========================
+# /location — sends map link
+# =========================
+@bot.tree.command(name="location", description="Get the interactive server map")
+async def location(interaction: discord.Interaction):
+    embed = discord.Embed(
+        title="🗺️ Server Map",
+        description=f"[Click here to open the interactive map]({MAP_URL})",
+        color=discord.Color.green()
+    )
+    embed.set_footer(text="Find locations, landmarks, and more")
+    await interaction.response.send_message(embed=embed)
+
 
 # =========================
 # INVENTORY COMMANDS
@@ -420,6 +501,7 @@ async def inventory(interaction: discord.Interaction):
         print(f"/inventory error: {e}")
         await interaction.response.send_message(f"Inventory error: {e}", ephemeral=True)
 
+
 # =========================
 # CRAFTING COMMANDS
 # =========================
@@ -433,24 +515,11 @@ async def gta(interaction: discord.Interaction):
     )
 
 
-@bot.tree.command(name="location", description="Show server map location")
-@app_commands.describe(place="Location to show")
-async def location(interaction: discord.Interaction, place: str):
-    place = place.lower().strip()
-    if place in locations:
-        file = discord.File(locations[place], filename="map.png")
-        embed = discord.Embed(
-            title=f"📍 {place.title()} Location",
-            color=discord.Color.green()
-        )
-        embed.set_image(url="attachment://map.png")
-        await interaction.response.send_message(embed=embed, file=file)
-    else:
-        await interaction.response.send_message("Location not found.")
-
-
-@bot.tree.command(name="ask", description="Ask the bot anything about crafting or locations")
-@app_commands.describe(question="Ask a question about the server, crafting, or locations")
+# =========================
+# /ask — OpenAI (GPT-4o-mini)
+# =========================
+@bot.tree.command(name="ask", description="Ask JSlice anything — powered by OpenAI")
+@app_commands.describe(question="Your question")
 async def ask(interaction: discord.Interaction, question: str):
     await interaction.response.defer()
 
@@ -458,54 +527,93 @@ async def ask(interaction: discord.Interaction, question: str):
         await interaction.followup.send("OPENAI_API_KEY is not set.")
         return
 
-    guide_context = build_guide_context()
+    user_id = interaction.user.id
+
+    if user_id not in openai_history:
+        openai_history[user_id] = []
+
+    openai_history[user_id].append({"role": "user", "content": question})
+
+    if len(openai_history[user_id]) > MAX_HISTORY:
+        openai_history[user_id] = openai_history[user_id][-MAX_HISTORY:]
 
     try:
-        response = client_ai.responses.create(
-            model="gpt-4.1-mini",
-            input=[
-                {
-                    "role": "system",
-                    "content": (
-                        "You are JSlice Crafting Guide, an in-character GTA RP server assistant with a Rhode Island attitude. "
-                        "You are street-smart, sarcastic, and confident. You speak like a local who knows the city and the hustle. "
-                        "You are helpful first, but you don't act like customer support.\n\n"
-                        "Personality rules:\n"
-                        "- Keep answers clear and useful.\n"
-                        "- Use light Rhode Island flavor like 'kid', 'guy', 'c'mon now'.\n"
-                        "- Sound natural, not robotic.\n"
-                        "- Do NOT overdo slang.\n\n"
-                        "Behavior rules:\n"
-                        "- Answer crafting questions directly.\n"
-                        "- Answer location questions like a local.\n"
-                        "- If info is not in the guide, say so and give a general answer.\n\n"
-                        "Toxic users:\n"
-                        "- If user is rude, respond with short, sarcastic clapback.\n"
-                        "- Do NOT use slurs, threats, or extreme harassment.\n"
-                        "- Stay in control.\n\n"
-                        "Examples:\n"
-                        "- 'Yeah yeah, ask it right and I'll help you.'\n"
-                        "- 'You good or you just talkin'?'\n"
-                        "- 'Don't make it harder than it needs to be.'"
-                    )
-                },
-                {
-                    "role": "user",
-                    "content": f"{guide_context}\n\nUser question: {question}"
-                }
-            ]
+        response = client_ai.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": build_system_prompt()}
+            ] + openai_history[user_id]
         )
 
-        answer = response.output_text.strip()
+        answer = response.choices[0].message.content.strip()
         if not answer:
             answer = "I couldn't generate an answer."
+
+        openai_history[user_id].append({"role": "assistant", "content": answer})
+
         if len(answer) > 1900:
             answer = answer[:1900] + "..."
 
-        await interaction.followup.send(answer)
+        await interaction.followup.send(f"**[GPT]** {answer}")
 
     except Exception as e:
         await interaction.followup.send(f"AI error: {e}")
+
+
+# =========================
+# /askclaude — Anthropic (Claude)
+# =========================
+@bot.tree.command(name="askclaude", description="Ask JSlice anything — powered by Claude")
+@app_commands.describe(question="Your question")
+async def askclaude(interaction: discord.Interaction, question: str):
+    await interaction.response.defer()
+
+    if not client_claude:
+        await interaction.followup.send("ANTHROPIC_API_KEY is not set.")
+        return
+
+    user_id = interaction.user.id
+
+    if user_id not in claude_history:
+        claude_history[user_id] = []
+
+    claude_history[user_id].append({"role": "user", "content": question})
+
+    if len(claude_history[user_id]) > MAX_HISTORY:
+        claude_history[user_id] = claude_history[user_id][-MAX_HISTORY:]
+
+    try:
+        response = client_claude.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=1024,
+            system=build_system_prompt(),
+            messages=claude_history[user_id]
+        )
+
+        answer = response.content[0].text.strip()
+        if not answer:
+            answer = "I couldn't generate an answer."
+
+        claude_history[user_id].append({"role": "assistant", "content": answer})
+
+        if len(answer) > 1900:
+            answer = answer[:1900] + "..."
+
+        await interaction.followup.send(f"**[Claude]** {answer}")
+
+    except Exception as e:
+        await interaction.followup.send(f"AI error: {e}")
+
+
+# =========================
+# /clearmemory
+# =========================
+@bot.tree.command(name="clearmemory", description="Clear JSlice's memory of your conversation")
+async def clearmemory(interaction: discord.Interaction):
+    user_id = interaction.user.id
+    openai_history.pop(user_id, None)
+    claude_history.pop(user_id, None)
+    await interaction.response.send_message("Memory cleared, kid. Fresh start.", ephemeral=True)
 
 
 # =========================
