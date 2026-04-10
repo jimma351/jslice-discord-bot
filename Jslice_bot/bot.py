@@ -55,6 +55,7 @@ SCOPES = [
 
 WORKSHEET_NAME = "Sheet1"
 
+print("Parsing GOOGLE_CREDS...", flush=True)
 try:
     creds_dict = json.loads(GOOGLE_CREDS)
 except json.JSONDecodeError as e:
@@ -65,9 +66,12 @@ if "private_key" not in creds_dict or not creds_dict["private_key"]:
 
 creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
 
+print("Building credentials...", flush=True)
 creds = Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
 gc = gspread.authorize(creds)
+print("Authorized gspread.", flush=True)
 
+print("Opening spreadsheet...", flush=True)
 try:
     spreadsheet = gc.open_by_key(SHEET_ID)
 except Exception as e:
@@ -75,6 +79,7 @@ except Exception as e:
         f"Failed to open spreadsheet. Check SHEET_ID and make sure the sheet is shared with the service account email. Error: {e}"
     )
 
+print("Opening worksheet...", flush=True)
 try:
     sheet = spreadsheet.worksheet(WORKSHEET_NAME)
 except gspread.WorksheetNotFound:
@@ -82,6 +87,7 @@ except gspread.WorksheetNotFound:
         f"Worksheet '{WORKSHEET_NAME}' not found. Create a tab with that exact name in your Google Sheet."
     )
 
+print("Checking headers...", flush=True)
 headers = ["Item", "Quantity"]
 existing_headers = sheet.row_values(1)
 
