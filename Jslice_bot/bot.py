@@ -1,3 +1,5 @@
+import sys
+print("Bot starting up...", flush=True)
 import os
 import json
 import discord
@@ -17,6 +19,11 @@ ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 GOOGLE_CREDS = os.getenv("GOOGLE_CREDS")
 SHEET_ID = os.getenv("SHEET_ID")
 
+print(f"TOKEN set: {bool(TOKEN)}", flush=True)
+print(f"GOOGLE_CREDS set: {bool(GOOGLE_CREDS)}", flush=True)
+print(f"SHEET_ID set: {bool(SHEET_ID)}", flush=True)
+print(f"OPENAI set: {bool(OPENAI_API_KEY)}", flush=True)
+print(f"ANTHROPIC set: {bool(ANTHROPIC_API_KEY)}", flush=True)
 if not TOKEN:
     raise ValueError("DISCORD_TOKEN is not set.")
 if not GOOGLE_CREDS:
