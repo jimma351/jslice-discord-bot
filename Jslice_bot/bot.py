@@ -334,16 +334,16 @@ class CategoryView(discord.ui.View):
 # =========================
 @bot.event
 async def on_ready():
-    print(f"Logged in as {bot.user}")
+    print(f"Logged in as {bot.user}", flush=True)
     try:
+        # Sync globally
         bot.tree.clear_commands(guild=None)
-        await bot.tree.sync()
         synced = await bot.tree.sync()
-        print(f"Synced {len(synced)} slash commands.")
+        print(f"Synced {len(synced)} global slash commands.", flush=True)
         for cmd in synced:
-            print(f"  - /{cmd.name}")
+            print(f"  - /{cmd.name}", flush=True)
     except Exception as e:
-        print(f"Slash command sync failed: {e}")
+        print(f"Slash command sync failed: {e}", flush=True)
 
 # =========================
 # /help
