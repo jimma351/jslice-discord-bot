@@ -332,7 +332,6 @@ class CategoryView(discord.ui.View):
 # =========================
 # EVENTS
 # =========================
-@bot.event
 GUILD_ID = discord.Object(id=1383300600367808613)
 
 @bot.event
