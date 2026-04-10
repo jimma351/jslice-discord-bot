@@ -333,11 +333,15 @@ class CategoryView(discord.ui.View):
 # EVENTS
 # =========================
 @bot.event
+GUILD_ID = discord.Object(id=1383300600367808613)
+
+@bot.event
 async def on_ready():
     print(f"Logged in as {bot.user}", flush=True)
     try:
-        synced = await bot.tree.sync()
-        print(f"Synced {len(synced)} global slash commands.", flush=True)
+        bot.tree.copy_global_to(guild=GUILD_ID)
+        synced = await bot.tree.sync(guild=GUILD_ID)
+        print(f"Synced {len(synced)} guild slash commands.", flush=True)
         for cmd in synced:
             print(f"  - /{cmd.name}", flush=True)
     except Exception as e:
