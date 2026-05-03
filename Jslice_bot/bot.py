@@ -1,7 +1,10 @@
 import sys
 print("Bot starting up...", flush=True)
+
 import os
 import json
+import random
+import asyncio
 import discord
 from discord import app_commands
 from discord.ext import commands
@@ -18,12 +21,17 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 GOOGLE_CREDS = os.getenv("GOOGLE_CREDS")
 SHEET_ID = os.getenv("SHEET_ID")
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+
+BOT_NAME = "O.R.A.C.L.E."
+BOT_FULL_NAME = "Operational Response & Analytical Cognitive Logic Engine"
 
 print(f"TOKEN set: {bool(TOKEN)}", flush=True)
 print(f"GOOGLE_CREDS set: {bool(GOOGLE_CREDS)}", flush=True)
 print(f"SHEET_ID set: {bool(SHEET_ID)}", flush=True)
 print(f"OPENAI set: {bool(OPENAI_API_KEY)}", flush=True)
 print(f"ANTHROPIC set: {bool(ANTHROPIC_API_KEY)}", flush=True)
+
 if not TOKEN:
     raise ValueError("DISCORD_TOKEN is not set.")
 if not GOOGLE_CREDS:
@@ -44,13 +52,14 @@ intents.members = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 ALLOWED_ROLE = "FK"
+GUILD_ID = discord.Object(id=1383300600367808613)
 
 # =========================
 # GOOGLE SHEETS SETUP
 # =========================
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
-    "https://www.googleapis.com/auth/drive"
+    "https://www.googleapis.com/auth/drive",
 ]
 
 WORKSHEET_NAME = "Sheet1"
@@ -76,7 +85,8 @@ try:
     spreadsheet = gc.open_by_key(SHEET_ID)
 except Exception as e:
     raise RuntimeError(
-        f"Failed to open spreadsheet. Check SHEET_ID and make sure the sheet is shared with the service account email. Error: {e}"
+        "Failed to open spreadsheet. Check SHEET_ID and make sure the sheet is "
+        f"shared with the service account email. Error: {e}"
     )
 
 print("Opening worksheet...", flush=True)
@@ -122,9 +132,9 @@ crafting_data = {
         "Smg Ammo": "1 Bullet\n1 Casing\n1 Gun Powder",
     },
     "Shotguns": {
-        "Bullpup": "10,000 Dirty Money\n1 Shotgun Barrel\n2 Shotgun Reciever\n1 Shotgun Shock",
-        "Mk2 Pump": "10,000 Dirty Money\n2 Shotgun Barrels\n2 Shotgun Recievers\n2 Shotgun Stocks",
-        "Pump": "10,000 Dirty Money\n1 Shotgun Barrel\n1 Shotgun Reciever\n1 Shotgun Shock",
+        "Bullpup": "10,000 Dirty Money\n1 Shotgun Barrel\n2 Shotgun Receiver\n1 Shotgun Stock",
+        "Mk2 Pump": "10,000 Dirty Money\n2 Shotgun Barrels\n2 Shotgun Receivers\n2 Shotgun Stocks",
+        "Pump": "10,000 Dirty Money\n1 Shotgun Barrel\n1 Shotgun Receiver\n1 Shotgun Stock",
         "Shotgun Ammo": "1 Bullet\n1 Casing\n1 Gun Powder",
     },
     "LMGs": {
@@ -153,16 +163,16 @@ crafting_data = {
     },
     "Components": {
         "Pistol Barrel": "4 Caliper\n4 Lathe Bits\n4 Steel Block",
-        "Pistol Lower": "2 Alumininum Block\n2 Caliper\n5 Milling Bit\n5 Screw\n2 Triggers",
-        "Pistol Upper": "4 Alumininum Block\n4 Caliper\n4 Milling Bit\n5 Screw\n4 Spring",
+        "Pistol Lower": "2 Aluminum Block\n2 Caliper\n5 Milling Bit\n5 Screw\n2 Triggers",
+        "Pistol Upper": "4 Aluminum Block\n4 Caliper\n4 Milling Bit\n5 Screw\n4 Spring",
         "Rifle Barrel": "4 Caliper\n4 Lathe Bits\n4 Steel Block",
-        "Rifle Lower": "2 Alumininum Block\n2 Caliper\n5 Milling Bit\n5 Screw\n2 Triggers",
+        "Rifle Lower": "2 Aluminum Block\n2 Caliper\n5 Milling Bit\n5 Screw\n2 Triggers",
         "Rifle Stock": "4 Caliper\n4 Milling Bits\n4 Plastic Block",
-        "Rifle Upper": "4 Alumininum Block\n4 Caliper\n4 Milling Bit\n5 Screw\n4 Spring",
+        "Rifle Upper": "4 Aluminum Block\n4 Caliper\n4 Milling Bit\n5 Screw\n4 Spring",
         "Shotgun Barrel": "4 Caliper\n4 Lathe Bits\n4 Steel Block",
         "Shotgun Receiver": "4 Aluminum Block\n4 Caliper\n4 Milling Bit\n4 Screw\n5 Trigger",
         "Shotgun Stock": "4 Caliper\n4 Milling Bits\n4 Plastic Block",
-    }
+    },
 }
 
 MAP_URL = "https://gta-map-tau.vercel.app/"
@@ -186,23 +196,40 @@ def build_guide_context() -> str:
     lines.append(f"\n[Map] Full interactive map: {MAP_URL}")
     return "\n".join(lines)
 
+
 def build_system_prompt() -> str:
     guide_context = build_guide_context()
     return (
-        "You are JSlice, an AI assistant living inside a GTA RP Discord server. "
-        "You have a Rhode Island attitude — street-smart, sarcastic, confident, but always helpful. "
-        "You speak like a local who knows the city and the hustle. Natural, not robotic.\n\n"
-        "You can answer ANY question — not just crafting. If someone asks you about real life, "
-        "general knowledge, math, advice, whatever — you answer it, in your voice.\n\n"
-        "Personality rules:\n"
-        "- Keep answers clear and useful.\n"
-        "- Use light Rhode Island flavor like 'kid', 'guy', 'c'mon now' — but don't overdo it.\n"
-        "- Sound natural, not like customer support.\n\n"
-        "Toxic users:\n"
-        "- If someone is rude, respond with a short sarcastic clapback.\n"
-        "- No slurs, threats, or extreme language.\n"
-        "- Stay in control.\n\n"
-        "You also know the full crafting guide for this server:\n\n"
+        f"You are {BOT_NAME}, the {BOT_FULL_NAME}, "
+        "an AI command system living inside a GTA RP Discord server.\n\n"
+        "Your job is to help members with GTA RP crafting, inventory planning, server info, "
+        "general questions, technology comparisons, PC parts, strategy, writing, coding, math, "
+        "summaries, planning, and operational decisions.\n\n"
+        "Personality:\n"
+        "- Sharp, calm, tactical, and useful.\n"
+        "- Professional, direct, and intelligent.\n"
+        "- Slightly witty when appropriate, but never hostile.\n"
+        "- Keep answers clear and not too long unless the user asks for detail.\n\n"
+        "Important rules:\n"
+        "- You are not limited to GTA RP. If the user asks about real life, tech, school, code, math, "
+        "or general knowledge, answer normally.\n"
+        "- You can answer questions using the game info below.\n"
+        "- Do not claim you changed inventory, channels, roles, or server settings unless a command actually did it.\n"
+        "- You do not create, delete, rename, or edit Discord channels, roles, categories, or servers.\n"
+        "- If someone asks for inventory changes, tell them to use /additem, /removeitem, or /setitem.\n"
+        "- If someone asks for crafting, calculate and explain the needed materials clearly.\n"
+        "- If someone asks where something is, give the map link when useful.\n"
+        "- No slurs, threats, or extreme language.\n\n"
+        "Available bot systems:\n"
+        "- /oracle asks O.R.A.C.L.E. anything.\n"
+        "- /oracleclaude asks the Claude-powered version, if enabled.\n"
+        "- /gta opens the crafting menu.\n"
+        "- /location gives the interactive map.\n"
+        "- /inventory shows shared inventory.\n"
+        "- /additem, /removeitem, and /setitem modify inventory for FK role users.\n"
+        "- /spinwheel spins random online members or typed names.\n"
+        "- /clearmemory clears conversation memory.\n\n"
+        "Game knowledge base:\n\n"
         f"{guide_context}"
     )
 
@@ -212,8 +239,10 @@ def build_system_prompt() -> str:
 def has_allowed_role(member: discord.Member) -> bool:
     return any(role.name == ALLOWED_ROLE for role in member.roles)
 
+
 def normalize_item_name(item_name: str) -> str:
     return item_name.strip()
+
 
 def find_item_row(item_name: str):
     records = sheet.get_all_records()
@@ -224,9 +253,11 @@ def find_item_row(item_name: str):
             return idx, row
     return None, None
 
+
 def get_inventory():
     records = sheet.get_all_records()
     return [row for row in records if str(row.get("Item", "")).strip()]
+
 
 def add_item(item_name: str, quantity: int):
     row_num, existing = find_item_row(item_name)
@@ -235,24 +266,28 @@ def add_item(item_name: str, quantity: int):
         new_qty = current_qty + quantity
         sheet.update(f"B{row_num}", [[new_qty]])
         return new_qty
-    else:
-        sheet.append_row([item_name, quantity])
-        return quantity
+
+    sheet.append_row([item_name, quantity])
+    return quantity
+
 
 def remove_item(item_name: str, quantity: int):
     row_num, existing = find_item_row(item_name)
     if not existing:
         return False, "Item not found."
+
     current_qty = int(existing.get("Quantity", 0))
     if current_qty < quantity:
         return False, f"Not enough quantity. Current: {current_qty}"
+
     new_qty = current_qty - quantity
     if new_qty <= 0:
         sheet.delete_rows(row_num)
         return True, 0
-    else:
-        sheet.update(f"B{row_num}", [[new_qty]])
-        return True, new_qty
+
+    sheet.update(f"B{row_num}", [[new_qty]])
+    return True, new_qty
+
 
 def set_item_quantity(item_name: str, quantity: int):
     row_num, existing = find_item_row(item_name)
@@ -260,6 +295,7 @@ def set_item_quantity(item_name: str, quantity: int):
         if existing:
             sheet.delete_rows(row_num)
         return 0
+
     if existing:
         sheet.update(f"B{row_num}", [[quantity]])
     else:
@@ -280,16 +316,16 @@ class ItemSelect(discord.ui.Select):
             placeholder=f"Choose a {category_name[:-1] if category_name.endswith('s') else category_name} item",
             min_values=1,
             max_values=1,
-            options=options
+            options=options,
         )
 
     async def callback(self, interaction: discord.Interaction):
         item_name = self.values[0]
         recipe = crafting_data[self.category_name][item_name]
         embed = discord.Embed(
-            title=f"🔧 {item_name}",
+            title=f"{item_name}",
             description=recipe,
-            color=discord.Color.blue()
+            color=discord.Color.blue(),
         )
         embed.set_footer(text=f"Category: {self.category_name}")
         await interaction.response.send_message(embed=embed, ephemeral=False)
@@ -311,7 +347,7 @@ class CategorySelect(discord.ui.Select):
             placeholder="Choose a crafting category",
             min_values=1,
             max_values=1,
-            options=options
+            options=options,
         )
 
     async def callback(self, interaction: discord.Interaction):
@@ -320,7 +356,7 @@ class CategorySelect(discord.ui.Select):
         await interaction.response.send_message(
             f"Select an item from **{category_name}**:",
             view=view,
-            ephemeral=False
+            ephemeral=False,
         )
 
 
@@ -332,8 +368,6 @@ class CategoryView(discord.ui.View):
 # =========================
 # EVENTS
 # =========================
-GUILD_ID = discord.Object(id=1383300600367808613)
-
 @bot.event
 async def on_ready():
     print(f"Logged in as {bot.user}", flush=True)
@@ -352,77 +386,64 @@ async def on_ready():
 @bot.tree.command(name="help", description="Show all available bot commands")
 async def help_command(interaction: discord.Interaction):
     embed = discord.Embed(
-        title="📋 JSlice Bot — Command List",
-        color=discord.Color.gold()
+        title="O.R.A.C.L.E. - Command Interface",
+        color=discord.Color.gold(),
     )
 
     embed.add_field(
-        name="🗺️ Map & Crafting",
+        name="Map & Crafting",
         value=(
-            "`/gta` — Open the crafting menu (pick category → pick item)\n"
-            "`/location` — Get the interactive server map link\n"
+            "`/gta` - Open the crafting menu\n"
+            "`/location` - Get the interactive server map link\n"
         ),
-        inline=False
+        inline=False,
     )
 
     embed.add_field(
-        name="🤖 AI Assistant",
+        name="AI Assistant",
         value=(
-            "`/ask [question]` — Ask JSlice anything, powered by **OpenAI**\n"
-            "`/askclaude [question]` — Ask JSlice anything, powered by **Claude**\n"
-            "`/clearmemory` — Wipe JSlice's memory of your conversation\n"
+            "`/oracle [question]` - Ask O.R.A.C.L.E. anything\n"
+            "`/oracleclaude [question]` - Ask the Claude-powered version, if enabled\n"
+            "`/clearmemory` - Clear your conversation memory\n"
         ),
-        inline=False
+        inline=False,
     )
 
     embed.add_field(
-        name="📦 Inventory (FK role required)",
+        name="Inventory (FK role required for edits)",
         value=(
-            "`/additem [item] [qty]` — Add items to the shared inventory\n"
-            "`/removeitem [item] [qty]` — Remove items from the shared inventory\n"
-            "`/setitem [item] [qty]` — Set an exact quantity for an item\n"
-            "`/inventory` — View the full shared inventory\n"
+            "`/additem [item] [qty]` - Add items to the shared inventory\n"
+            "`/removeitem [item] [qty]` - Remove items from the shared inventory\n"
+            "`/setitem [item] [qty]` - Set an exact quantity for an item\n"
+            "`/inventory` - View the full shared inventory\n"
         ),
-        inline=False
+        inline=False,
     )
 
     embed.add_field(
-        name="🎡 Fun",
+        name="Utility",
         value=(
-            "`/spinwheel` — Spin the wheel, lands on a random online member!\n"
+            "`/spinwheel` - Spin random online members\n"
+            "`/spinwheel names: Mike, Jay, Sarah` - Spin typed names, even if everyone is offline\n"
         ),
-        inline=False
+        inline=False,
     )
 
-    embed.add_field(
-        name="🔧 Server Management (Admin only)",
-        value=(
-            "`/createcategory [name]` — Create a new category\n"
-            "`/deletecategory [name]` — Delete a category and all its channels\n"
-            "`/createchannel [name] [category] [text/voice]` — Create a channel\n"
-            "`/deletechannel [name]` — Delete a channel\n"
-            "`/renameserver [name]` — Rename the server\n"
-        ),
-        inline=False
-    )
-
-    embed.set_footer(text="JSlice Crafting Guide • GTA RP Server")
+    embed.set_footer(text=f"{BOT_NAME} - {BOT_FULL_NAME}")
     await interaction.response.send_message(embed=embed)
 
-
 # =========================
-# /location — sends map link
+# /location
 # =========================
 @bot.tree.command(name="location", description="Get the interactive server map")
 async def location(interaction: discord.Interaction):
     embed = discord.Embed(
-        title="🗺️ Server Map",
+        title="Server Map",
         description=f"[Click here to open the interactive map]({MAP_URL})",
-        color=discord.Color.green()
+        color=discord.Color.green(),
     )
     embed.set_footer(text="Find locations, landmarks, and more")
     await interaction.response.send_message(embed=embed)
-
 
 # =========================
 # INVENTORY COMMANDS
@@ -436,6 +457,7 @@ async def additem(interaction: discord.Interaction, item_name: str, quantity: in
     if not has_allowed_role(interaction.user):
         await interaction.response.send_message("You do not have permission to use this command.", ephemeral=True)
         return
+
     item_name = normalize_item_name(item_name)
     if not item_name:
         await interaction.response.send_message("Item name cannot be empty.", ephemeral=True)
@@ -443,6 +465,7 @@ async def additem(interaction: discord.Interaction, item_name: str, quantity: in
     if quantity <= 0:
         await interaction.response.send_message("Quantity must be more than 0.", ephemeral=True)
         return
+
     new_qty = add_item(item_name, quantity)
     await interaction.response.send_message(
         f"Added **{quantity}x {item_name}**.\nNew total: **{new_qty}**"
@@ -458,6 +481,7 @@ async def removeitem(interaction: discord.Interaction, item_name: str, quantity:
     if not has_allowed_role(interaction.user):
         await interaction.response.send_message("You do not have permission to use this command.", ephemeral=True)
         return
+
     item_name = normalize_item_name(item_name)
     if not item_name:
         await interaction.response.send_message("Item name cannot be empty.", ephemeral=True)
@@ -465,10 +489,12 @@ async def removeitem(interaction: discord.Interaction, item_name: str, quantity:
     if quantity <= 0:
         await interaction.response.send_message("Quantity must be more than 0.", ephemeral=True)
         return
+
     success, result = remove_item(item_name, quantity)
     if not success:
         await interaction.response.send_message(result, ephemeral=True)
         return
+
     await interaction.response.send_message(
         f"Removed **{quantity}x {item_name}**.\nRemaining: **{result}**"
     )
@@ -483,10 +509,12 @@ async def setitem(interaction: discord.Interaction, item_name: str, quantity: in
     if not has_allowed_role(interaction.user):
         await interaction.response.send_message("You do not have permission to use this command.", ephemeral=True)
         return
+
     item_name = normalize_item_name(item_name)
     if not item_name:
         await interaction.response.send_message("Item name cannot be empty.", ephemeral=True)
         return
+
     new_qty = set_item_quantity(item_name, quantity)
     await interaction.response.send_message(
         f"Set **{item_name}** to **{new_qty}**."
@@ -505,7 +533,7 @@ async def inventory(interaction: discord.Interaction):
         for item in items:
             name = str(item.get("Item", "Unknown")).strip()
             qty = item.get("Quantity", 0)
-            lines.append(f"**{name}** — {qty}")
+            lines.append(f"**{name}** - {qty}")
 
         chunks = []
         current_chunk = ""
@@ -523,7 +551,7 @@ async def inventory(interaction: discord.Interaction):
         embed = discord.Embed(
             title="Shared Inventory",
             description=chunks[0],
-            color=discord.Color.blue()
+            color=discord.Color.blue(),
         )
         await interaction.response.send_message(embed=embed)
 
@@ -531,14 +559,13 @@ async def inventory(interaction: discord.Interaction):
             extra_embed = discord.Embed(
                 title="Shared Inventory (continued)",
                 description=chunk,
-                color=discord.Color.blue()
+                color=discord.Color.blue(),
             )
             await interaction.followup.send(embed=extra_embed)
 
     except Exception as e:
-        print(f"/inventory error: {e}")
+        print(f"/inventory error: {e}", flush=True)
         await interaction.response.send_message(f"Inventory error: {e}", ephemeral=True)
-
 
 # =========================
 # CRAFTING COMMANDS
@@ -549,16 +576,15 @@ async def gta(interaction: discord.Interaction):
     await interaction.response.send_message(
         "Choose a crafting category:",
         view=view,
-        ephemeral=False
+        ephemeral=False,
     )
 
-
 # =========================
-# /ask — OpenAI (GPT-4o-mini)
+# /oracle - OpenAI
 # =========================
-@bot.tree.command(name="ask", description="Ask JSlice anything — powered by OpenAI")
+@bot.tree.command(name="oracle", description="Ask O.R.A.C.L.E. anything")
 @app_commands.describe(question="Your question")
-async def ask(interaction: discord.Interaction, question: str):
+async def oracle(interaction: discord.Interaction, question: str):
     await interaction.response.defer()
 
     if not client_ai:
@@ -566,10 +592,7 @@ async def ask(interaction: discord.Interaction, question: str):
         return
 
     user_id = interaction.user.id
-
-    if user_id not in openai_history:
-        openai_history[user_id] = []
-
+    openai_history.setdefault(user_id, [])
     openai_history[user_id].append({"role": "user", "content": question})
 
     if len(openai_history[user_id]) > MAX_HISTORY:
@@ -577,33 +600,33 @@ async def ask(interaction: discord.Interaction, question: str):
 
     try:
         response = client_ai.chat.completions.create(
-            model="gpt-4o-mini",
+            model=OPENAI_MODEL,
             messages=[
-                {"role": "system", "content": build_system_prompt()}
-            ] + openai_history[user_id]
+                {"role": "system", "content": build_system_prompt()},
+            ] + openai_history[user_id],
+            temperature=0.7,
         )
 
         answer = response.choices[0].message.content.strip()
         if not answer:
-            answer = "I couldn't generate an answer."
+            answer = "I could not generate an answer."
 
         openai_history[user_id].append({"role": "assistant", "content": answer})
 
         if len(answer) > 1900:
             answer = answer[:1900] + "..."
 
-        await interaction.followup.send(f"**[GPT]** {answer}")
+        await interaction.followup.send(f"**[{BOT_NAME}]** {answer}")
 
     except Exception as e:
-        await interaction.followup.send(f"AI error: {e}")
-
+        await interaction.followup.send(f"O.R.A.C.L.E. error: {e}")
 
 # =========================
-# /askclaude — Anthropic (Claude)
+# /oracleclaude - Anthropic
 # =========================
-@bot.tree.command(name="askclaude", description="Ask JSlice anything — powered by Claude")
+@bot.tree.command(name="oracleclaude", description="Ask O.R.A.C.L.E. through Claude")
 @app_commands.describe(question="Your question")
-async def askclaude(interaction: discord.Interaction, question: str):
+async def oracleclaude(interaction: discord.Interaction, question: str):
     await interaction.response.defer()
 
     if not client_claude:
@@ -611,10 +634,7 @@ async def askclaude(interaction: discord.Interaction, question: str):
         return
 
     user_id = interaction.user.id
-
-    if user_id not in claude_history:
-        claude_history[user_id] = []
-
+    claude_history.setdefault(user_id, [])
     claude_history[user_id].append({"role": "user", "content": question})
 
     if len(claude_history[user_id]) > MAX_HISTORY:
@@ -625,174 +645,99 @@ async def askclaude(interaction: discord.Interaction, question: str):
             model="claude-sonnet-4-20250514",
             max_tokens=1024,
             system=build_system_prompt(),
-            messages=claude_history[user_id]
+            messages=claude_history[user_id],
         )
 
         answer = response.content[0].text.strip()
         if not answer:
-            answer = "I couldn't generate an answer."
+            answer = "I could not generate an answer."
 
         claude_history[user_id].append({"role": "assistant", "content": answer})
 
         if len(answer) > 1900:
             answer = answer[:1900] + "..."
 
-        await interaction.followup.send(f"**[Claude]** {answer}")
+        await interaction.followup.send(f"**[{BOT_NAME} / Claude]** {answer}")
 
     except Exception as e:
-        await interaction.followup.send(f"AI error: {e}")
-
+        await interaction.followup.send(f"Claude error: {e}")
 
 # =========================
 # /clearmemory
 # =========================
-@bot.tree.command(name="clearmemory", description="Clear JSlice's memory of your conversation")
+@bot.tree.command(name="clearmemory", description="Clear O.R.A.C.L.E.'s memory of your conversation")
 async def clearmemory(interaction: discord.Interaction):
     user_id = interaction.user.id
     openai_history.pop(user_id, None)
     claude_history.pop(user_id, None)
-    await interaction.response.send_message("Memory cleared, kid. Fresh start.", ephemeral=True)
-
-
-# =========================
-# ADMIN CHECK HELPER
-# =========================
-def is_admin(member: discord.Member) -> bool:
-    return member.guild_permissions.administrator
-
-
-# =========================
-# SERVER MANAGEMENT COMMANDS (Admin only)
-# =========================
-@bot.tree.command(name="createcategory", description="Create a new category (Admin only)")
-@app_commands.describe(name="Name of the category")
-async def createcategory(interaction: discord.Interaction, name: str):
-    if not isinstance(interaction.user, discord.Member) or not is_admin(interaction.user):
-        await interaction.response.send_message("You need to be an admin to use this.", ephemeral=True)
-        return
-    try:
-        category = await interaction.guild.create_category(name)
-        await interaction.response.send_message(f"✅ Category **{category.name}** created.")
-    except Exception as e:
-        await interaction.response.send_message(f"Error: {e}", ephemeral=True)
-
-
-@bot.tree.command(name="deletecategory", description="Delete a category and all its channels (Admin only)")
-@app_commands.describe(name="Name of the category to delete")
-async def deletecategory(interaction: discord.Interaction, name: str):
-    if not isinstance(interaction.user, discord.Member) or not is_admin(interaction.user):
-        await interaction.response.send_message("You need to be an admin to use this.", ephemeral=True)
-        return
-    category = discord.utils.get(interaction.guild.categories, name=name)
-    if not category:
-        await interaction.response.send_message(f"Category **{name}** not found.", ephemeral=True)
-        return
-    try:
-        for channel in category.channels:
-            await channel.delete()
-        await category.delete()
-        await interaction.response.send_message(f"🗑️ Category **{name}** and all its channels deleted.")
-    except Exception as e:
-        await interaction.response.send_message(f"Error: {e}", ephemeral=True)
-
-
-@bot.tree.command(name="createchannel", description="Create a channel inside a category (Admin only)")
-@app_commands.describe(name="Channel name", category="Category to put it in", kind="text or voice")
-@app_commands.choices(kind=[
-    app_commands.Choice(name="text", value="text"),
-    app_commands.Choice(name="voice", value="voice"),
-])
-async def createchannel(interaction: discord.Interaction, name: str, category: str, kind: str = "text"):
-    if not isinstance(interaction.user, discord.Member) or not is_admin(interaction.user):
-        await interaction.response.send_message("You need to be an admin to use this.", ephemeral=True)
-        return
-    cat = discord.utils.get(interaction.guild.categories, name=category)
-    if not cat:
-        await interaction.response.send_message(f"Category **{category}** not found.", ephemeral=True)
-        return
-    try:
-        if kind == "voice":
-            channel = await interaction.guild.create_voice_channel(name, category=cat)
-        else:
-            channel = await interaction.guild.create_text_channel(name, category=cat)
-        await interaction.response.send_message(f"✅ {kind.title()} channel **{channel.name}** created in **{category}**.")
-    except Exception as e:
-        await interaction.response.send_message(f"Error: {e}", ephemeral=True)
-
-
-@bot.tree.command(name="deletechannel", description="Delete a channel (Admin only)")
-@app_commands.describe(name="Name of the channel to delete")
-async def deletechannel(interaction: discord.Interaction, name: str):
-    if not isinstance(interaction.user, discord.Member) or not is_admin(interaction.user):
-        await interaction.response.send_message("You need to be an admin to use this.", ephemeral=True)
-        return
-    channel = discord.utils.get(interaction.guild.channels, name=name)
-    if not channel:
-        await interaction.response.send_message(f"Channel **{name}** not found.", ephemeral=True)
-        return
-    try:
-        await channel.delete()
-        await interaction.response.send_message(f"🗑️ Channel **{name}** deleted.")
-    except Exception as e:
-        await interaction.response.send_message(f"Error: {e}", ephemeral=True)
-
-
-@bot.tree.command(name="renameserver", description="Rename the server (Admin only)")
-@app_commands.describe(name="New server name")
-async def renameserver(interaction: discord.Interaction, name: str):
-    if not isinstance(interaction.user, discord.Member) or not is_admin(interaction.user):
-        await interaction.response.send_message("You need to be an admin to use this.", ephemeral=True)
-        return
-    try:
-        await interaction.guild.edit(name=name)
-        await interaction.response.send_message(f"✅ Server renamed to **{name}**.")
-    except Exception as e:
-        await interaction.response.send_message(f"Error: {e}", ephemeral=True)
-
+    await interaction.response.send_message("O.R.A.C.L.E. memory cleared. Fresh start.", ephemeral=True)
 
 # =========================
 # /spinwheel
 # =========================
-@bot.tree.command(name="spinwheel", description="Spin the wheel — lands on a random online member!")
-async def spinwheel(interaction: discord.Interaction):
+@bot.tree.command(name="spinwheel", description="Spin the wheel with typed names or random online members")
+@app_commands.describe(names="Optional names separated by commas, like: Mike, Jay, Sarah")
+async def spinwheel(interaction: discord.Interaction, names: str = ""):
     await interaction.response.defer()
 
-    members = [
-        m for m in interaction.guild.members
-        if not m.bot and m.status != discord.Status.offline
+    if names.strip():
+        entries = [
+            name.strip()
+            for name in names.split(",")
+            if name.strip()
+        ]
+
+        if len(entries) < 2:
+            await interaction.followup.send("Add at least 2 names to spin the wheel.")
+            return
+
+        spin_pool = entries
+        winner = random.choice(entries)
+        winner_text = winner
+        thumbnail_url = None
+    else:
+        members = [
+            m for m in interaction.guild.members
+            if not m.bot and m.status != discord.Status.offline
+        ]
+
+        if len(members) < 2:
+            await interaction.followup.send("Not enough online members to spin the wheel.")
+            return
+
+        spin_pool = members
+        winner = random.choice(members)
+        winner_text = winner.mention
+        thumbnail_url = winner.avatar.url if winner.avatar else None
+
+    spin_frames = [
+        "Spinning...",
+        "Spinning... .",
+        "Spinning... ..",
+        "Spinning... ...",
+        "Spinning... ....",
     ]
 
-    if len(members) < 2:
-        await interaction.followup.send("Not enough online members to spin the wheel, kid.")
-        return
-
-    import random
-    import asyncio
-
-    winner = random.choice(members)
-
-    spin_frames = ["🎡 Spinning...", "🎡 Spinning... ⠋", "🎡 Spinning... ⠙", "🎡 Spinning... ⠸",
-                   "🎡 Spinning... ⠴", "🎡 Spinning... ⠦", "🎡 Spinning... ⠇", "🎡 Spinning... ⠏"]
-
-    msg = await interaction.followup.send("🎡 Starting the wheel...")
+    msg = await interaction.followup.send("Starting the wheel...")
 
     for i in range(12):
         frame = spin_frames[i % len(spin_frames)]
-        decoy = random.choice(members)
-        await msg.edit(content=f"{frame}\n👤 **{decoy.display_name}**...")
+        decoy = random.choice(spin_pool)
+        display = decoy.display_name if isinstance(decoy, discord.Member) else decoy
+        await msg.edit(content=f"{frame}\n**{display}**...")
         await asyncio.sleep(0.4 if i < 8 else 0.7)
 
     embed = discord.Embed(
-        title="🎡 The Wheel Has Spoken!",
-        description=f"# 🎉 {winner.mention}",
-        color=discord.Color.gold()
+        title="The Wheel Has Spoken",
+        description=f"# {winner_text}",
+        color=discord.Color.gold(),
     )
     embed.set_footer(text=f"Spun by {interaction.user.display_name}")
-    if winner.avatar:
-        embed.set_thumbnail(url=winner.avatar.url)
+
+    if thumbnail_url:
+        embed.set_thumbnail(url=thumbnail_url)
 
     await msg.edit(content="", embed=embed)
-
 
 # =========================
 # RUN BOT
