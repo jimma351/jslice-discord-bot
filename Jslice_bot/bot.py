@@ -24,6 +24,7 @@ ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 GOOGLE_CREDS = os.getenv("GOOGLE_CREDS")
 SHEET_ID = os.getenv("SHEET_ID")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+OPENAI_SEARCH_MODEL = os.getenv("OPENAI_SEARCH_MODEL", "gpt-4o-mini-search-preview")
 
 BOT_NAME = "O.R.A.C.L.E."
 BOT_FULL_NAME = "Operational Response & Analytical Cognitive Logic Engine"
@@ -199,7 +200,7 @@ def build_guide_context() -> str:
     return "\n".join(lines)
 
 
-def build_system_prompt() -> str:
+def build_system_prompt(display_name: str = "the user") -> str:
     guide_context = build_guide_context()
     now = datetime.now(ZoneInfo("America/New_York"))
     current_time = now.strftime("%A, %B %d, %Y at %I:%M %p %Z")
@@ -207,6 +208,8 @@ def build_system_prompt() -> str:
         f"You are {BOT_NAME}, the {BOT_FULL_NAME}, "
         "an AI command system living inside a GTA RP Discord server.\n\n"
         f"Current date and time for the server owner is {current_time}.\n\n"
+        f"You are currently speaking with {display_name}. Use their name naturally when it helps the reply feel personal, "
+        "but do not force their name into every answer.\n\n"
         "Your job is to help members with GTA RP crafting, inventory planning, server info, "
         "general questions, technology comparisons, PC parts, strategy, writing, coding, math, "
         "summaries, planning, and operational decisions.\n\n"
@@ -220,6 +223,10 @@ def build_system_prompt() -> str:
         "or general knowledge, answer normally.\n"
         "- You can answer questions using the game info below.\n"
         "- If the user asks what time or date it is, answer using the current date and time provided above.\n"
+        "- If a question depends on current, recent, latest, live, release-date, sales, price, patch, or news information, "
+        "use live web search when available. Do not answer those questions from outdated memory.\n"
+        "- Never say 'as of my last update' or mention an old training cutoff. Either answer with current sources or say "
+        "a live lookup is needed.\n"
         "- Do not claim you changed inventory, channels, roles, or server settings unless a command actually did it.\n"
         "- You do not create, delete, rename, or edit Discord channels, roles, categories, or servers.\n"
         "- If someone asks for inventory changes, tell them to use /additem, /removeitem, or /setitem.\n"
@@ -588,9 +595,85 @@ async def gta(interaction: discord.Interaction):
 # =========================
 # /oracle - OpenAI
 # =========================
-async def generate_oracle_answer(user_id: int, question: str) -> str:
+CURRENT_INFO_KEYWORDS = [
+    "current",
+    "currently",
+    "latest",
+    "newest",
+    "recent",
+    "today",
+    "tonight",
+    "tomorrow",
+    "yesterday",
+    "now",
+    "right now",
+    "this week",
+    "this month",
+    "this year",
+    "2025",
+    "2026",
+    "release",
+    "released",
+    "release date",
+    "launch",
+    "launched",
+    "update",
+    "patch",
+    "news",
+    "price",
+    "cost",
+    "deal",
+    "sale",
+    "sales",
+    "worth",
+    "stock",
+    "available",
+    "availability",
+]
+
+
+def asks_for_time_or_date(question: str) -> bool:
+    lowered = question.lower()
+    return any(
+        phrase in lowered
+        for phrase in [
+            "what time",
+            "current time",
+            "time is it",
+            "what date",
+            "today's date",
+            "todays date",
+            "current date",
+        ]
+    )
+
+
+def answer_time_or_date() -> str:
+    now = datetime.now(ZoneInfo("America/New_York"))
+    return f"It is {now.strftime('%A, %B %d, %Y at %I:%M %p %Z')}."
+
+
+def needs_live_lookup(question: str) -> bool:
+    lowered = question.lower()
+    return any(keyword in lowered for keyword in CURRENT_INFO_KEYWORDS)
+
+
+def build_messages_for_user(user_id: int, display_name: str):
+    return [
+        {"role": "system", "content": build_system_prompt(display_name)},
+    ] + openai_history[user_id]
+
+
+async def generate_oracle_answer(user_id: int, question: str, display_name: str = "the user") -> str:
     if not client_ai:
         return "OPENAI_API_KEY is not set."
+
+    if asks_for_time_or_date(question):
+        answer = answer_time_or_date()
+        openai_history.setdefault(user_id, [])
+        openai_history[user_id].append({"role": "user", "content": question})
+        openai_history[user_id].append({"role": "assistant", "content": answer})
+        return answer
 
     openai_history.setdefault(user_id, [])
     openai_history[user_id].append({"role": "user", "content": question})
@@ -598,13 +681,21 @@ async def generate_oracle_answer(user_id: int, question: str) -> str:
     if len(openai_history[user_id]) > MAX_HISTORY:
         openai_history[user_id] = openai_history[user_id][-MAX_HISTORY:]
 
-    response = client_ai.chat.completions.create(
-        model=OPENAI_MODEL,
-        messages=[
-            {"role": "system", "content": build_system_prompt()},
-        ] + openai_history[user_id],
-        temperature=0.7,
-    )
+    if needs_live_lookup(question):
+        try:
+            response = client_ai.chat.completions.create(
+                model=OPENAI_SEARCH_MODEL,
+                web_search_options={},
+                messages=build_messages_for_user(user_id, display_name),
+            )
+        except Exception as e:
+            return f"Live lookup failed, so I will not guess from outdated info. Error: {e}"
+    else:
+        response = client_ai.chat.completions.create(
+            model=OPENAI_MODEL,
+            messages=build_messages_for_user(user_id, display_name),
+            temperature=0.7,
+        )
 
     answer = response.choices[0].message.content.strip()
     if not answer:
@@ -631,7 +722,11 @@ class OracleContinueModal(discord.ui.Modal, title="Continue With O.R.A.C.L.E."):
         await interaction.response.defer()
 
         try:
-            answer = await generate_oracle_answer(interaction.user.id, str(self.question))
+            answer = await generate_oracle_answer(
+                interaction.user.id,
+                str(self.question),
+                interaction.user.display_name,
+            )
             await interaction.followup.send(
                 f"**[{BOT_NAME}]** {answer}",
                 view=OracleContinueView(),
@@ -663,7 +758,11 @@ async def oracle(interaction: discord.Interaction, question: str):
         return
 
     try:
-        answer = await generate_oracle_answer(interaction.user.id, question)
+        answer = await generate_oracle_answer(
+            interaction.user.id,
+            question,
+            interaction.user.display_name,
+        )
         await interaction.followup.send(
             f"**[{BOT_NAME}]** {answer}",
             view=OracleContinueView(),
@@ -695,7 +794,7 @@ async def oracleclaude(interaction: discord.Interaction, question: str):
         response = client_claude.messages.create(
             model="claude-sonnet-4-20250514",
             max_tokens=1024,
-            system=build_system_prompt(),
+            system=build_system_prompt(interaction.user.display_name),
             messages=claude_history[user_id],
         )
 
