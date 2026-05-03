@@ -582,6 +582,71 @@ async def gta(interaction: discord.Interaction):
 # =========================
 # /oracle - OpenAI
 # =========================
+async def generate_oracle_answer(user_id: int, question: str) -> str:
+    if not client_ai:
+        return "OPENAI_API_KEY is not set."
+
+    openai_history.setdefault(user_id, [])
+    openai_history[user_id].append({"role": "user", "content": question})
+
+    if len(openai_history[user_id]) > MAX_HISTORY:
+        openai_history[user_id] = openai_history[user_id][-MAX_HISTORY:]
+
+    response = client_ai.chat.completions.create(
+        model=OPENAI_MODEL,
+        messages=[
+            {"role": "system", "content": build_system_prompt()},
+        ] + openai_history[user_id],
+        temperature=0.7,
+    )
+
+    answer = response.choices[0].message.content.strip()
+    if not answer:
+        answer = "I could not generate an answer."
+
+    openai_history[user_id].append({"role": "assistant", "content": answer})
+
+    if len(answer) > 1900:
+        answer = answer[:1900] + "..."
+
+    return answer
+
+
+class OracleContinueModal(discord.ui.Modal, title="Continue With O.R.A.C.L.E."):
+    question = discord.ui.TextInput(
+        label="What do you want to ask next?",
+        style=discord.TextStyle.paragraph,
+        placeholder="Type your follow-up here...",
+        required=True,
+        max_length=1800,
+    )
+
+    async def on_submit(self, interaction: discord.Interaction):
+        await interaction.response.defer()
+
+        try:
+            answer = await generate_oracle_answer(interaction.user.id, str(self.question))
+            await interaction.followup.send(
+                f"**[{BOT_NAME}]** {answer}",
+                view=OracleContinueView(),
+            )
+        except Exception as e:
+            await interaction.followup.send(f"O.R.A.C.L.E. error: {e}")
+
+
+class OracleContinueView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=300)
+
+    @discord.ui.button(label="Continue Conversation", style=discord.ButtonStyle.primary)
+    async def continue_conversation(
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button,
+    ):
+        await interaction.response.send_modal(OracleContinueModal())
+
+
 @bot.tree.command(name="oracle", description="Ask O.R.A.C.L.E. anything")
 @app_commands.describe(question="Your question")
 async def oracle(interaction: discord.Interaction, question: str):
@@ -591,32 +656,12 @@ async def oracle(interaction: discord.Interaction, question: str):
         await interaction.followup.send("OPENAI_API_KEY is not set.")
         return
 
-    user_id = interaction.user.id
-    openai_history.setdefault(user_id, [])
-    openai_history[user_id].append({"role": "user", "content": question})
-
-    if len(openai_history[user_id]) > MAX_HISTORY:
-        openai_history[user_id] = openai_history[user_id][-MAX_HISTORY:]
-
     try:
-        response = client_ai.chat.completions.create(
-            model=OPENAI_MODEL,
-            messages=[
-                {"role": "system", "content": build_system_prompt()},
-            ] + openai_history[user_id],
-            temperature=0.7,
+        answer = await generate_oracle_answer(interaction.user.id, question)
+        await interaction.followup.send(
+            f"**[{BOT_NAME}]** {answer}",
+            view=OracleContinueView(),
         )
-
-        answer = response.choices[0].message.content.strip()
-        if not answer:
-            answer = "I could not generate an answer."
-
-        openai_history[user_id].append({"role": "assistant", "content": answer})
-
-        if len(answer) > 1900:
-            answer = answer[:1900] + "..."
-
-        await interaction.followup.send(f"**[{BOT_NAME}]** {answer}")
 
     except Exception as e:
         await interaction.followup.send(f"O.R.A.C.L.E. error: {e}")
