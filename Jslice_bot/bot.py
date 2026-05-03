@@ -5,6 +5,8 @@ import os
 import json
 import random
 import asyncio
+from datetime import datetime
+from zoneinfo import ZoneInfo
 import discord
 from discord import app_commands
 from discord.ext import commands
@@ -199,9 +201,12 @@ def build_guide_context() -> str:
 
 def build_system_prompt() -> str:
     guide_context = build_guide_context()
+    now = datetime.now(ZoneInfo("America/New_York"))
+    current_time = now.strftime("%A, %B %d, %Y at %I:%M %p %Z")
     return (
         f"You are {BOT_NAME}, the {BOT_FULL_NAME}, "
         "an AI command system living inside a GTA RP Discord server.\n\n"
+        f"Current date and time for the server owner is {current_time}.\n\n"
         "Your job is to help members with GTA RP crafting, inventory planning, server info, "
         "general questions, technology comparisons, PC parts, strategy, writing, coding, math, "
         "summaries, planning, and operational decisions.\n\n"
@@ -214,6 +219,7 @@ def build_system_prompt() -> str:
         "- You are not limited to GTA RP. If the user asks about real life, tech, school, code, math, "
         "or general knowledge, answer normally.\n"
         "- You can answer questions using the game info below.\n"
+        "- If the user asks what time or date it is, answer using the current date and time provided above.\n"
         "- Do not claim you changed inventory, channels, roles, or server settings unless a command actually did it.\n"
         "- You do not create, delete, rename, or edit Discord channels, roles, categories, or servers.\n"
         "- If someone asks for inventory changes, tell them to use /additem, /removeitem, or /setitem.\n"
