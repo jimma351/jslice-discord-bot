@@ -1,2 +1,0 @@
-[phases.install]
-cmds = ["pip install discord.py openai anthropic gspread google-auth"]

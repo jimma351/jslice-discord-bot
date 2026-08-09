@@ -1,5 +1,0 @@
-discord.py
-openai
-anthropic
-gspread
-google-auth
