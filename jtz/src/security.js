@@ -28,7 +28,7 @@ export function attachSecurity(client){
   const now=Date.now(),id=member.guild.id;
   const arr=(joins.get(id)||[]).filter(t=>now-t<60000);arr.push(now);joins.set(id,arr);
   const age=Math.floor((now-member.user.createdTimestamp)/86400000);
-  await post(member.guild,'Member joined','User: <@'+member.id+'> | Account age: '+age+' days'+(age<7?' | **NEW ACCOUNT**':''),age<7);
+  await post(member.guild,'Member joined','User: <@'+member.id+'> | Account created: <t:'+Math.floor(member.user.createdTimestamp/1000)+':F> | Joined NXGC: <t:'+Math.floor(now/1000)+':F>'+(age<7?' | **NEW ACCOUNT**':''),age<7);
   if(arr.length>=8 && now-(alertTimes.get(id)||0)>120000){
    alertTimes.set(id,now);
    await post(member.guild,'POSSIBLE RAID','Detected '+arr.length+' member joins in 60 seconds. Review new members and consider Discord verification / raid protection. No automatic punishment was applied.',true);
