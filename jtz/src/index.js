@@ -2,15 +2,17 @@ import { Client, GatewayIntentBits, PermissionFlagsBits, ChannelType, ActionRowB
 import { token, isApproved } from './config.js';
 import { roles, categories } from './plan.js';
 import { restyle, styledCategory, styledChannel } from './restyle.js';
+import { attachSecurity, securityCommand } from './security.js';
 if (!token) throw new Error('DISCORD_TOKEN is required');
-const client = new Client({intents:[GatewayIntentBits.Guilds]});
+const client = new Client({intents:[GatewayIntentBits.Guilds,GatewayIntentBits.GuildMessages,...(process.env.JTZ_MEMBER_EVENTS==='true'?[GatewayIntentBits.GuildMembers]:[])]});
+attachSecurity(client);
 client.once('clientReady', async () => {
  console.log('JTZ ready as', client.user.tag);
  console.log('JTZ guilds:', client.guilds.cache.map(g => g.name + ' (' + g.id + ')').join(', ') || 'NONE');
  for (const guild of client.guilds.cache.values()) {
   if (!isApproved(guild.id)) continue;
   try {
-   await guild.commands.set([{name:'jtz-setup',description:'Preview or create NXGC server roles and channels',default_member_permissions:PermissionFlagsBits.Administrator.toString(),options:[{type:1,name:'preview',description:'Preview server setup'},{type:1,name:'apply',description:'Create missing roles and channels'},{type:1,name:'restyle-preview',description:'Preview channel font changes'},{type:1,name:'restyle-apply',description:'Rename existing channels and create private QS log placeholders'}]}]);
+   await guild.commands.set([securityCommand,{name:'jtz-setup',description:'Preview or create NXGC server roles and channels',default_member_permissions:PermissionFlagsBits.Administrator.toString(),options:[{type:1,name:'preview',description:'Preview server setup'},{type:1,name:'apply',description:'Create missing roles and channels'},{type:1,name:'restyle-preview',description:'Preview channel font changes'},{type:1,name:'restyle-apply',description:'Rename existing channels and create private QS log placeholders'}]}]);
    console.log('Registered /jtz-setup in',guild.name,guild.id);
   } catch (error) { console.error('Failed to register /jtz-setup:',guild.id,error.code,error.message); }
  }
