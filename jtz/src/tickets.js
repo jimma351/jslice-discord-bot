@@ -23,14 +23,23 @@ const buttons=(closed=false)=>new ActionRowBuilder().addComponents(
 const panel=()=>new ActionRowBuilder().addComponents(new StringSelectMenuBuilder().setCustomId('jtz_ticket_department').setPlaceholder('Select a support department').addOptions(Object.entries(departments).map(([value,d])=>({label:d.label,value,description:'Private '+d.label.replace(/^[^ ]+ /,'')+' ticket'}))));
 const reply=async(i,s)=>i.deferred||i.replied?i.editReply(s):i.reply({content:s,ephemeral:true});
 const logs=g=>find(g,'tickets')||find(g,'moderation-logs');
-const privateLog=async(g,dept)=>{
- const name='jtz-ticket-logs-'+dept;
+const archive=async(g,dept)=>{
+ const name=dept+'-ticket-archives';
  let c=g.channels.cache.find(c=>c.type===ChannelType.GuildText&&c.name===name);
- if(c)return c;
  const roles=staffRoles(g,dept);
- if(!roles.length)throw Error('Cannot create private ticket log without department staff roles.');
- const overwrites=[{id:g.id,deny:[P.ViewChannel]},...roles.map(r=>({id:r.id,allow:[P.ViewChannel,P.ReadMessageHistory]}))];
- return g.channels.create({name,type:ChannelType.GuildText,permissionOverwrites:overwrites,reason:'JTZ private '+dept+' ticket transcripts'});
+ if(!roles.length)throw Error('No department archive roles available.');
+ const perms=[{id:g.id,deny:[P.ViewChannel]},...roles.map(r=>({id:r.id,allow:[P.ViewChannel,P.ReadMessageHistory,P.SendMessages,P.CreatePublicThreads,P.SendMessagesInThreads]}))];
+ if(!c)c=await g.channels.create({name,type:ChannelType.GuildText,permissionOverwrites:perms});
+ else await c.permissionOverwrites.set(perms,'JTZ private archive permissions');
+ return c;
+};
+const archiveTicket=async(g,dept,data,transcript,ch)=>{
+ const parent=await archive(g,dept);
+ const post=await parent.send({content:'**Closed ticket** | '+departments[dept].label+' | Owner: <@'+data.owner+'> | Closed by: <@'+data.closedBy+'> | Ticket: '+ch.id,allowedMentions:{parse:[]}});
+ const thread=await post.startThread({name:dept+'-ticket-'+ch.id.slice(-8),autoArchiveDuration:1440});
+ await thread.send({content:'Saved transcript ('+transcript.count+' messages, up to 2000).',files:[transcript.file]});
+ await thread.setArchived(true);
+ return thread;
 };
 const log=async(g,s)=>{const c=logs(g);if(c)await c.send({content:s,allowedMentions:{parse:[]}}).catch(console.error);};
 const save=(c,data)=>c.setTopic(tag+JSON.stringify(data),'JTZ ticket state');
@@ -127,10 +136,9 @@ export function attachTickets(client){
     const transcript=await makeTranscript(i.channel);
     await save(i.channel,data);
     await i.channel.permissionOverwrites.edit(data.owner,{ViewChannel:false,SendMessages:false});
-    const audit=await privateLog(g,data.dept);
-    if(audit)await audit.send({content:'**Ticket closed** | '+departments[data.dept].label+' | Owner: <@'+data.owner+'> | Closed by: <@'+i.user.id+'> | '+transcript.count+' messages (up to 2000)',files:[transcript.file],allowedMentions:{parse:[]}});
+    const saved=await archiveTicket(g,data.dept,data,transcript,i.channel);
     await i.channel.send({content:'🔒 Ticket closed by <@'+i.user.id+'>. Authorized staff may reopen it.',components:[buttons(true)]});
-    return reply(i,'Ticket closed. Transcript sent to staff ticket logs.');
+    return reply(i,'Ticket closed. Transcript saved to archive thread.');
    }
    if(op==='jtz_t_reopen'){
     if(!isStaff)return reply(i,'Only department staff can reopen a closed ticket.');
