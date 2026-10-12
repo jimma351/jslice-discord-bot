@@ -52,9 +52,9 @@ client.on('interactionCreate', async interaction => {
     const existing=guild.channels.cache.find(ch=>ch.topic==='JTZ ticket owner: '+interaction.user.id);
     if(existing) return interaction.editReply('Your ticket is already open: '+existing.toString());
     const parent=guild.channels.cache.find(ch=>ch.name==='🛡️ STAFF & SECURITY' && ch.type===ChannelType.GuildCategory);
-    const staff=guild.roles.cache.find(r=>r.name==='Staff');
+    const ticketAccess=['Staff','Discord Staff','Lead Dev','Executive'].map(name=>guild.roles.cache.find(r=>r.name===name)).filter(Boolean);
     const overwrites=[{id:guild.roles.everyone.id,deny:[PermissionFlagsBits.ViewChannel]},{id:interaction.user.id,allow:[PermissionFlagsBits.ViewChannel,PermissionFlagsBits.SendMessages,PermissionFlagsBits.ReadMessageHistory]}];
-    if(staff) overwrites.push({id:staff.id,allow:[PermissionFlagsBits.ViewChannel,PermissionFlagsBits.SendMessages,PermissionFlagsBits.ReadMessageHistory]});
+    for(const role of ticketAccess) overwrites.push({id:role.id,allow:[PermissionFlagsBits.ViewChannel,PermissionFlagsBits.SendMessages,PermissionFlagsBits.ReadMessageHistory]});
     const ch=await guild.channels.create({name:'ticket-'+interaction.user.id,type:ChannelType.GuildText,parent:parent?.id,topic:'JTZ ticket owner: '+interaction.user.id,permissionOverwrites:overwrites});
     await ch.send({content:'Support ticket for <@'+interaction.user.id+'>. Staff will assist you here.',components:[new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('jtz_close_ticket').setLabel('Close ticket').setStyle(ButtonStyle.Danger))]});
     return interaction.editReply('Ticket opened: '+ch.toString());
@@ -93,16 +93,16 @@ client.on('interactionCreate', async interaction => {
     {id:guild.roles.everyone.id,deny:[PermissionFlagsBits.ViewChannel]},
     ...category.roles.map(name => ({id:roleMap.get(name).id,allow:[PermissionFlagsBits.ViewChannel]}))
    ] : undefined;
-   if (!parent) {parent = await guild.channels.create({name:category.name,type:ChannelType.GuildCategory,permissionOverwrites:overwrites,reason:'JTZ initial server setup'});created++;}
+   if (!parent) {parent = await guild.channels.create({name:category.name,type:ChannelType.GuildCategory,permissionOverwrites:overwrites,reason:'JTZ initial server setup'});created++;} else if (overwrites) {await parent.permissionOverwrites.set(overwrites,'JTZ role access update');}
    for (const name of category.voice || []) {
    if (!guild.channels.cache.some(c => c.parentId === parent.id && c.name === name && c.type === ChannelType.GuildVoice)) {
-    await guild.channels.create({name,type:ChannelType.GuildVoice,parent:parent.id,reason:'JTZ voice rooms'});
+    await guild.channels.create({name,type:ChannelType.GuildVoice,parent:parent.id,permissionOverwrites:overwrites,reason:'JTZ voice rooms'});
     created++;
    }
   }
   for (const name of category.channels) {
     if (!guild.channels.cache.some(c => c.parentId === parent.id && c.name === name)) {
-     await guild.channels.create({name,type:ChannelType.GuildText,parent:parent.id,reason:'JTZ initial server setup'});
+     await guild.channels.create({name,type:ChannelType.GuildText,parent:parent.id,permissionOverwrites:overwrites,reason:'JTZ initial server setup'});
      created++;
     }
    }
