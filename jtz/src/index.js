@@ -4,7 +4,7 @@ import { roles, categories } from './plan.js';
 import { restyle, styledCategory, styledChannel } from './restyle.js';
 import { attachSecurity, securityCommand } from './security.js';
 if (!token) throw new Error('DISCORD_TOKEN is required');
-const client = new Client({intents:[GatewayIntentBits.Guilds,GatewayIntentBits.GuildMessages,...(process.env.JTZ_MEMBER_EVENTS==='true'?[GatewayIntentBits.GuildMembers]:[])]});
+const client = new Client({intents:[GatewayIntentBits.Guilds,GatewayIntentBits.GuildMessages,GatewayIntentBits.GuildModeration,...(process.env.JTZ_MEMBER_EVENTS==='true'?[GatewayIntentBits.GuildMembers]:[])]});
 attachSecurity(client);
 client.once('clientReady', async () => {
  console.log('JTZ ready as', client.user.tag);
