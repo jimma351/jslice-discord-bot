@@ -40,7 +40,6 @@ export function attachSecurity(client){
  client.on('roleDelete',r=>{if(guard(r.guild))destructive(r.guild,'ROLE DELETED','Role: '+r.name+' ('+r.id+')');});
  client.on('roleUpdate',(oldRole,newRole)=>{
   if(!guard(newRole.guild))return;
-  const added=newRole.permissions.remove(oldRole.permissions);
   const dangerous=[PermissionFlagsBits.Administrator,PermissionFlagsBits.ManageGuild,PermissionFlagsBits.ManageRoles,PermissionFlagsBits.ManageChannels,PermissionFlagsBits.ManageWebhooks,PermissionFlagsBits.BanMembers];
   const grants=dangerous.filter(p=>!oldRole.permissions.has(p)&&newRole.permissions.has(p));
   if(grants.length)post(newRole.guild,'DANGEROUS ROLE PERMISSION GRANTED','Role: '+newRole.name+' ('+newRole.id+') | Newly granted: '+grants.map(p=>Object.entries(PermissionFlagsBits).find(([,v])=>v===p)?.[0]||String(p)).join(', '),true);
