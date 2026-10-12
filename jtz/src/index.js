@@ -2,7 +2,7 @@ import { Client, GatewayIntentBits, PermissionFlagsBits, ChannelType, ActionRowB
 import { token, isApproved } from './config.js';
 import { roles, categories } from './plan.js';
 if (!token) throw new Error('DISCORD_TOKEN is required');
-const client = new Client({intents:[GatewayIntentBits.Guilds,GatewayIntentBits.GuildMembers]});
+const client = new Client({intents:[GatewayIntentBits.Guilds]});
 client.once('clientReady', async () => {
  console.log('JTZ ready as', client.user.tag);
  console.log('JTZ guilds:', client.guilds.cache.map(g => g.name + ' (' + g.id + ')').join(', ') || 'NONE');
