@@ -29,6 +29,9 @@ export function attachLockdown(client){
      // Edit only visibility on @everyone and Verified, preserving other overwrites.
      await c.permissionOverwrites.edit(g.id,{ViewChannel:false},{reason:'JTZ verification-first lockdown'});
      await c.permissionOverwrites.edit(verified.id,{ViewChannel:true},{reason:'JTZ verification-first lockdown'});
+     for(const n of ['FiveM','DayZ','Aion2','All Games','Announcements','No Announcements','Unverified']){
+      const r=findRole(g,n);if(r&&c.permissionOverwrites.cache.get(r.id)?.allow.has(P.ViewChannel))await c.permissionOverwrites.edit(r.id,{ViewChannel:null},{reason:'JTZ prevent pre-verification role access'});
+     }
     }catch(e){errors.push(c.name+': '+e.message);}
    };
    for(const n of protectedCategories){
@@ -36,7 +39,7 @@ export function attachLockdown(client){
     if(!cat){errors.push('Missing category '+n);continue;}
     await set(cat,'Protected category');
     for(const c of g.channels.cache.filter(c=>c.parentId===cat.id).values()){
-     if(publicNames.has([...publicNames].find(n=>match(c.name,n))))continue;
+     if([...publicNames].some(n=>match(c.name,n)))continue;
      await set(c,'Protected channel');
     }
    }
