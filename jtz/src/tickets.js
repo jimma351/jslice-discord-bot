@@ -1,4 +1,4 @@
-import {ActionRowBuilder,ButtonBuilder,ButtonStyle,ChannelType,EmbedBuilder,PermissionFlagsBits,StringSelectMenuBuilder,AttachmentBuilder} from 'discord.js';
+import {ActionRowBuilder,ButtonBuilder,ButtonStyle,ChannelType,EmbedBuilder,PermissionFlagsBits,StringSelectMenuBuilder,AttachmentBuilder,ModalBuilder,TextInputBuilder,TextInputStyle} from 'discord.js';
 import {isApproved} from './config.js';
 import {styledChannel} from './restyle.js';
 const P=PermissionFlagsBits;
@@ -23,6 +23,15 @@ const buttons=(closed=false)=>new ActionRowBuilder().addComponents(
 const panel=()=>new ActionRowBuilder().addComponents(new StringSelectMenuBuilder().setCustomId('jtz_ticket_department').setPlaceholder('Select a support department').addOptions(Object.entries(departments).map(([value,d])=>({label:d.label,value,description:'Private '+d.label.replace(/^[^ ]+ /,'')+' ticket'}))));
 const reply=async(i,s)=>i.deferred||i.replied?i.editReply(s):i.reply({content:s,ephemeral:true});
 const logs=g=>find(g,'tickets')||find(g,'moderation-logs');
+const privateLog=async(g,dept)=>{
+ const name='jtz-ticket-logs-'+dept;
+ let c=g.channels.cache.find(c=>c.type===ChannelType.GuildText&&c.name===name);
+ if(c)return c;
+ const roles=staffRoles(g,dept);
+ if(!roles.length)throw Error('Cannot create private ticket log without department staff roles.');
+ const overwrites=[{id:g.id,deny:[P.ViewChannel]},...roles.map(r=>({id:r.id,allow:[P.ViewChannel,P.ReadMessageHistory]}))];
+ return g.channels.create({name,type:ChannelType.GuildText,permissionOverwrites:overwrites,reason:'JTZ private '+dept+' ticket transcripts'});
+};
 const log=async(g,s)=>{const c=logs(g);if(c)await c.send({content:s,allowedMentions:{parse:[]}}).catch(console.error);};
 const save=(c,data)=>c.setTopic(tag+JSON.stringify(data),'JTZ ticket state');
 const getTicket=i=>{const data=info(i.channel);return data?.owner&&departments[data.dept]?data:null;};
@@ -46,7 +55,8 @@ export function attachTickets(client){
   const cmd=i.isChatInputCommand()&&i.commandName==='jtz-tickets';
   const select=i.isStringSelectMenu()&&i.customId==='jtz_ticket_department';
   const btn=i.isButton()&&i.customId.startsWith('jtz_t_');
-  if(!cmd&&!select&&!btn)return;
+  const modal=i.isModalSubmit()&&i.customId==='jtz_t_add_submit';
+  if(!cmd&&!select&&!btn&&!modal)return;
   try{
    const g=i.guild;
    if(cmd){
@@ -85,8 +95,24 @@ export function attachTickets(client){
    const member=await g.members.fetch(i.user.id);
    const isStaff=staff(member,data.dept),isOwner=i.user.id===data.owner;
    if(!isStaff&&!isOwner)return i.reply({content:'You do not have permission to manage this ticket.',ephemeral:true});
+   if(btn&&i.customId==='jtz_t_add'){
+    if(!isStaff)return i.reply({content:'Only department staff can add members.',ephemeral:true});
+    const form=new ModalBuilder().setCustomId('jtz_t_add_submit').setTitle('Add Ticket Member').addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('member_id').setLabel('Discord user ID').setStyle(TextInputStyle.Short).setRequired(true).setMinLength(17).setMaxLength(20)));
+    return i.showModal(form);
+   }
    await i.deferReply({ephemeral:true});
    const op=i.customId;
+   if(modal){
+    if(!isStaff)return reply(i,'Only department staff can add members.');
+    if(data.closed)return reply(i,'Ticket is closed.');
+    const id=i.fields.getTextInputValue('member_id').trim();
+    if(!/^\d{17,20}$/.test(id))return reply(i,'Invalid Discord user ID.');
+    const target=await g.members.fetch(id).catch(()=>null);
+    if(!target)return reply(i,'That user is not in this server.');
+    await i.channel.permissionOverwrites.edit(id,{ViewChannel:true,SendMessages:true,ReadMessageHistory:true});
+    await log(g,'**Ticket member added** | '+i.channel.toString()+' | Added: '+id+' | By: '+i.user.id);
+    return reply(i,'Added <@'+id+'> to this ticket.');
+   }
    if(op==='jtz_t_claim'){
     if(!isStaff)return reply(i,'Only assigned department staff can claim tickets.');
     if(data.closed)return reply(i,'This ticket is closed.');
@@ -95,17 +121,13 @@ export function attachTickets(client){
     await i.channel.send('Ticket claimed by <@'+i.user.id+'>.');
     return reply(i,'Ticket claimed.');
    }
-   if(op==='jtz_t_add'){
-    if(!isStaff)return reply(i,'Only department staff can add members.');
-    return reply(i,'To add a member, use Discord channel permissions for this ticket. JTZ does not accept unreviewed user IDs through buttons.');
-   }
    if(op==='jtz_t_close'){
     if(data.closed)return reply(i,'Ticket already closed.');
     data.closed=true;data.closedBy=i.user.id;data.closedAt=Date.now();
     const transcript=await makeTranscript(i.channel);
     await save(i.channel,data);
     await i.channel.permissionOverwrites.edit(data.owner,{ViewChannel:false,SendMessages:false});
-    const audit=logs(g);
+    const audit=await privateLog(g,data.dept);
     if(audit)await audit.send({content:'**Ticket closed** | '+departments[data.dept].label+' | Owner: <@'+data.owner+'> | Closed by: <@'+i.user.id+'> | '+transcript.count+' messages (up to 2000)',files:[transcript.file],allowedMentions:{parse:[]}});
     await i.channel.send({content:'🔒 Ticket closed by <@'+i.user.id+'>. Authorized staff may reopen it.',components:[buttons(true)]});
     return reply(i,'Ticket closed. Transcript sent to staff ticket logs.');
