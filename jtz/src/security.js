@@ -1,11 +1,12 @@
 import { GatewayIntentBits, PermissionFlagsBits, ChannelType } from 'discord.js';
 import { isApproved } from './config.js';
+import { styledChannel } from './restyle.js';
 const joins=new Map(), floods=new Map(), alertTimes=new Map(), destructiveEvents=new Map();
 const securityRoles=['Executive','Lead Dev','Discord Staff'];
-const findLog=(guild,name)=>guild.channels.cache.find(c=>c.type===ChannelType.GuildText&&(c.name===name||c.name.includes(name)));
+const findLog=(guild,name)=>guild.channels.cache.find(c=>c.type===ChannelType.GuildText&&(c.name===name||c.name===styledChannel(name)));
 const post=async(guild,title,details,urgent=false)=>{
  const ch=findLog(guild,urgent?'jtz-security-alerts':'moderation-logs')||findLog(guild,'jtz-security-alerts');
- if(!ch)return;
+ if(!ch){console.warn('JTZ security log channel missing in',guild.id,urgent?'jtz-security-alerts':'moderation-logs');return;}
  await ch.send({content:'**'+title+'**\n'+details,allowedMentions:{parse:[]}}).catch(e=>console.error('Security log:',e.message));
 };
 const guard=g=>g&&isApproved(g.id);
@@ -70,6 +71,6 @@ export function attachSecurity(client){
   if(!i.isChatInputCommand()||i.commandName!=='jtz-security')return;
   if(!i.inGuild()||!isApproved(i.guildId))return i.reply({content:'Not an approved guild.',ephemeral:true});
   if(!i.memberPermissions?.has(PermissionFlagsBits.ManageGuild))return i.reply({content:'Manage Server permission required.',ephemeral:true});
-  return i.reply({content:'**JTZ Security — Phase 1**\n• Member join/leave and ban logging: active when bot permissions allow\n• New account and 8-joins/60s raid alerts: enabled\n• Channel/role deletion alerts and 3-deletions/60s anti-nuke warnings: enabled\n• Dangerous role permission grants and private-channel visibility alerts: enabled\n• Message flood (7 in 8s) and mass-mention alerts: enabled when Message Content and relevant intents are available\n• Automatic kicks/bans/deletions: **OFF**\n• Logs: existing private moderation-logs / jtz-security-alerts channels\n• Full control panel, ticket tiers, applications and persistent moderation records: not yet implemented.',ephemeral:true});
+  return i.reply({content:'**JTZ Security — Phase 1**\n• Member join/leave: '+(process.env.JTZ_MEMBER_EVENTS==='true'?'enabled (requires Discord Members Intent)':'disabled (set JTZ_MEMBER_EVENTS=true)')+'\n• Ban events: enabled with GuildModeration intent\n• New account and 8-joins/60s raid alerts: enabled\n• Channel/role deletion alerts and 3-deletions/60s anti-nuke warnings: enabled\n• Dangerous role permission grants and private-channel visibility alerts: enabled\n• Message flood (7 in 8s) and mass-mention alerts: enabled when Message Content and relevant intents are available\n• Automatic kicks/bans/deletions: **OFF**\n• Logs: existing private moderation-logs / jtz-security-alerts channels\n• Full control panel, ticket tiers, applications and persistent moderation records: not yet implemented.',ephemeral:true});
  });
 }
