@@ -3,7 +3,17 @@ import { token, isApproved } from './config.js';
 import { roles, categories } from './plan.js';
 if (!token) throw new Error('DISCORD_TOKEN is required');
 const client = new Client({intents:[GatewayIntentBits.Guilds]});
-client.once('ready', () => console.log('JTZ ready as', client.user.tag));
+client.once('clientReady', async () => {
+ console.log('JTZ ready as', client.user.tag);
+ console.log('JTZ guilds:', client.guilds.cache.map(g => g.name + ' (' + g.id + ')').join(', ') || 'NONE');
+ for (const guild of client.guilds.cache.values()) {
+  if (!isApproved(guild.id)) continue;
+  try {
+   await guild.commands.set([{name:'jtz-setup',description:'Preview or create NXGC server roles and channels',default_member_permissions:PermissionFlagsBits.Administrator.toString(),options:[{type:1,name:'preview',description:'Preview server setup'},{type:1,name:'apply',description:'Create missing roles and channels'}]}]);
+   console.log('Registered /jtz-setup in',guild.name,guild.id);
+  } catch (error) { console.error('Failed to register /jtz-setup:',guild.id,error.code,error.message); }
+ }
+});
 client.on('guildCreate', async guild => {
  if (!isApproved(guild.id)) await guild.leave().catch(console.error);
 });
