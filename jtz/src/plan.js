@@ -1,4 +1,4 @@
-export const roles = ['FiveM', 'DayZ', 'Aion2', 'All Games', 'Announcements', 'Staff', 'Discord Staff', 'Admin', 'Developer', 'Lead Dev', 'FiveM Admin', 'DayZ Admin', 'Aion2 Admin', 'Executive', 'Server Owner', 'Unverified', 'Verified'];
+export const roles = ['FiveM', 'DayZ', 'Aion2', 'All Games', 'Announcements', 'Staff', 'Discord Staff', 'Admin', 'Developer', 'Lead Dev', 'FiveM Admin', 'DayZ Admin', 'Aion2 Admin', 'Executive', 'Unverified', 'Verified'];
 export const categories = [
   { name: '📢 WELCOME & INFORMATION', channels: ['welcome', 'rules', 'announcements', 'choose-your-games'] },
   { name: '💬 NXGC COMMUNITY', channels: ['general', 'suggestions', 'open-a-ticket', 'verify-here'], voice: ['Chill 1', 'Chill 2', 'Chill 3', 'Coffee Room'] },
@@ -11,7 +11,7 @@ export const categories = [
   { name: '🛠️ FIVEM ADMIN', channels: ['fivem-admin-announcements', 'fivem-admin-chat'], voice: ['FiveM Admin Voice'], roles: ['FiveM Admin', 'Discord Staff', 'Lead Dev', 'Executive'] },
   { name: '🛠️ DAYZ ADMIN', channels: ['dayz-admin-announcements', 'dayz-admin-chat'], voice: ['DayZ Admin Voice'], roles: ['DayZ Admin', 'Discord Staff', 'Lead Dev', 'Executive'] },
   { name: '🛠️ AION2 ADMIN', channels: ['aion2-admin-announcements', 'aion2-admin-chat'], voice: ['Aion2 Admin Voice'], roles: ['Aion2 Admin', 'Discord Staff', 'Lead Dev', 'Executive'] },
-  { name: '👑 EXECUTIVES', channels: ['executive-announcements', 'executive-general'], voice: ['Executive Voice'], roles: ['Executive', 'Server Owner'] },
+  { name: '👑 EXECUTIVES', channels: ['executive-announcements', 'executive-general'], voice: ['Executive Voice'], roles: ['Executive'] },
   { name: '🔧 DISCORD STAFF', channels: ['discord-staff-announcements', 'discord-staff-general', 'discord-reports', 'discord-staff-log'], voice: ['Discord Staff Voice'], roles: ['Discord Staff', 'Lead Dev', 'Executive'] },
   { name: '🛡️ STAFF & SECURITY', channels: ['admin-announcements', 'admin-general', 'staff-chat', 'moderation-logs', 'jtz-security-alerts', 'tickets'], voice: ['Admin Voice'], roles: ['Staff', 'Discord Staff', 'Lead Dev', 'Executive'] }
 ];
