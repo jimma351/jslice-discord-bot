@@ -1,6 +1,7 @@
 import { Client, GatewayIntentBits, PermissionFlagsBits, ChannelType, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } from 'discord.js';
 import { token, isApproved } from './config.js';
 import { roles, categories } from './plan.js';
+import { restyle, styledCategory, styledChannel } from './restyle.js';
 if (!token) throw new Error('DISCORD_TOKEN is required');
 const client = new Client({intents:[GatewayIntentBits.Guilds]});
 client.once('clientReady', async () => {
@@ -9,7 +10,7 @@ client.once('clientReady', async () => {
  for (const guild of client.guilds.cache.values()) {
   if (!isApproved(guild.id)) continue;
   try {
-   await guild.commands.set([{name:'jtz-setup',description:'Preview or create NXGC server roles and channels',default_member_permissions:PermissionFlagsBits.Administrator.toString(),options:[{type:1,name:'preview',description:'Preview server setup'},{type:1,name:'apply',description:'Create missing roles and channels'}]}]);
+   await guild.commands.set([{name:'jtz-setup',description:'Preview or create NXGC server roles and channels',default_member_permissions:PermissionFlagsBits.Administrator.toString(),options:[{type:1,name:'preview',description:'Preview server setup'},{type:1,name:'apply',description:'Create missing roles and channels'},{type:1,name:'restyle-preview',description:'Preview channel font changes'},{type:1,name:'restyle-apply',description:'Rename existing channels and create private QS log placeholders'}]}]);
    console.log('Registered /jtz-setup in',guild.name,guild.id);
   } catch (error) { console.error('Failed to register /jtz-setup:',guild.id,error.code,error.message); }
  }
@@ -51,7 +52,7 @@ client.on('interactionCreate', async interaction => {
     await interaction.deferReply({ephemeral:true});
     const existing=guild.channels.cache.find(ch=>ch.topic==='JTZ ticket owner: '+interaction.user.id);
     if(existing) return interaction.editReply('Your ticket is already open: '+existing.toString());
-    const parent=guild.channels.cache.find(ch=>ch.name==='🛡️ STAFF & SECURITY' && ch.type===ChannelType.GuildCategory);
+    const parent=guild.channels.cache.find(ch=>(ch.name==='🛡️ STAFF & SECURITY'||ch.name===styledCategory('🛡️ STAFF & SECURITY')) && ch.type===ChannelType.GuildCategory);
     const ticketAccess=['Staff','Discord Staff','Lead Dev','Executive'].map(name=>guild.roles.cache.find(r=>r.name===name)).filter(Boolean);
     const overwrites=[{id:guild.roles.everyone.id,deny:[PermissionFlagsBits.ViewChannel]},{id:interaction.user.id,allow:[PermissionFlagsBits.ViewChannel,PermissionFlagsBits.SendMessages,PermissionFlagsBits.ReadMessageHistory]}];
     for(const role of ticketAccess) overwrites.push({id:role.id,allow:[PermissionFlagsBits.ViewChannel,PermissionFlagsBits.SendMessages,PermissionFlagsBits.ReadMessageHistory]});
@@ -72,6 +73,8 @@ client.on('interactionCreate', async interaction => {
  if (!interaction.inGuild() || !isApproved(interaction.guildId)) return interaction.reply({content:'This server is not approved for JTZ.',ephemeral:true});
  if (!interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)) return interaction.reply({content:'Administrator permission required.',ephemeral:true});
  const action = interaction.options.getSubcommand();
+ if (action === 'restyle-preview') return restyle(interaction,true);
+ if (action === 'restyle-apply') return restyle(interaction,false);
  if (action === 'preview') return interaction.reply({content:'**Planned roles:** '+roles.join(', ')+'\n**Planned categories:** '+categories.map(c=>c.name+' ('+c.channels.join(', ')+(c.voice?.length?' | Voice: '+c.voice.join(', '):'')+')').join('\n'),ephemeral:true});
  await interaction.deferReply({ephemeral:true});
  try {
@@ -113,7 +116,7 @@ client.on('interactionCreate', async interaction => {
    {name:'open-a-ticket',text:'Need help? Open a private support ticket.',components:[new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('jtz_ticket').setLabel('Open ticket').setStyle(ButtonStyle.Primary))]}
   ];
   for (const panel of panels) {
-   const channel = guild.channels.cache.find(ch=>ch.name===panel.name && ch.type===ChannelType.GuildText);
+   const channel = guild.channels.cache.find(ch=>(ch.name===panel.name||ch.name===styledChannel(panel.name)) && ch.type===ChannelType.GuildText);
    if (channel) await channel.send({content:panel.text,components:panel.components});
   }
   await interaction.editReply('JTZ setup complete. Created '+created+' channels/categories (plus any missing roles). Existing channels were preserved. Check permissions and native Onboarding before inviting members.');
