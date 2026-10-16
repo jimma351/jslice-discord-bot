@@ -7,6 +7,7 @@ import { attachWelcome, welcomeCommand } from './welcome.js';
 import { attachLockdown, lockdownCommand } from './lockdown.js';
 import { attachHoneypot, honeypotCommand } from './honeypot.js';
 import { attachTickets, ticketCommand } from './tickets.js';
+import { attachTerminal, terminalCommand, terminalAdminCommand } from './terminal.js';
 if (!token) throw new Error('DISCORD_TOKEN is required');
 const client = new Client({intents:[GatewayIntentBits.Guilds,GatewayIntentBits.GuildMessages,GatewayIntentBits.GuildModeration,...(process.env.JTZ_MEMBER_EVENTS==='true'?[GatewayIntentBits.GuildMembers]:[])]});
 attachSecurity(client);
@@ -14,14 +15,19 @@ attachWelcome(client);
 attachLockdown(client);
 attachHoneypot(client);
 attachTickets(client);
+attachTerminal(client);
 client.once('clientReady', async () => {
  console.log('JTZ ready as', client.user.tag);
  console.log('JTZ guilds:', client.guilds.cache.map(g => g.name + ' (' + g.id + ')').join(', ') || 'NONE');
  for (const guild of client.guilds.cache.values()) {
   if (!isApproved(guild.id)) continue;
   try {
-   await guild.commands.set([securityCommand,welcomeCommand,lockdownCommand,honeypotCommand,ticketCommand,{name:'jtz-setup',description:'Preview or create NXGC server roles and channels',default_member_permissions:PermissionFlagsBits.Administrator.toString(),options:[{type:1,name:'preview',description:'Preview server setup'},{type:1,name:'apply',description:'Create missing roles and channels'},{type:1,name:'restyle-preview',description:'Preview channel font changes'},{type:1,name:'restyle-apply',description:'Rename existing channels and create private QS log placeholders'}]}]);
-   console.log('Registered /jtz-setup in',guild.name,guild.id);
+   const registered = await guild.commands.set([securityCommand,welcomeCommand,lockdownCommand,honeypotCommand,ticketCommand,terminalCommand,terminalAdminCommand,{name:'jtz-setup',description:'Preview or create NXGC server roles and channels',default_member_permissions:PermissionFlagsBits.Administrator.toString(),options:[{type:1,name:'preview',description:'Preview server setup'},{type:1,name:'apply',description:'Create missing roles and channels'},{type:1,name:'restyle-preview',description:'Preview channel font changes'},{type:1,name:'restyle-apply',description:'Rename existing channels and create private QS log placeholders'}]}]);
+   const verified = await guild.commands.fetch();
+   for (const command of registered.values()) {
+    if (!verified.some(c => c.name === command.name)) throw new Error('Missing registered command: '+command.name);
+   }
+   console.log('Verified Discord guild commands in',guild.name,guild.id,':',verified.map(c=>'/'+c.name).join(', '));
   } catch (error) { console.error('Failed to register /jtz-setup:',guild.id,error.code,error.message); }
  }
 });
