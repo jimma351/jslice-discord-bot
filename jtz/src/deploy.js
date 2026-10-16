@@ -5,6 +5,7 @@ import { welcomeCommand } from './welcome.js';
 import { lockdownCommand } from './lockdown.js';
 import { honeypotCommand } from './honeypot.js';
 import { ticketCommand } from './tickets.js';
+import { terminalCommand, terminalAdminCommand } from './terminal.js';
 if (!token || !clientId || !guildIds.length) throw new Error('Configure DISCORD_TOKEN, CLIENT_ID and ALLOWED_GUILD_IDS');
 const cmd = new SlashCommandBuilder().setName('jtz-setup').setDescription('Preview or build the NXGC server layout')
  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
@@ -24,7 +25,7 @@ for (const id of guildIds) {
   continue;
  }
  try {
-  await rest.put(Routes.applicationGuildCommands(clientId, id), {body:[cmd.toJSON(),securityCommand,welcomeCommand,lockdownCommand,honeypotCommand,ticketCommand]});
+  await rest.put(Routes.applicationGuildCommands(clientId, id), {body:[cmd.toJSON(),securityCommand,welcomeCommand,lockdownCommand,honeypotCommand,ticketCommand,terminalCommand,terminalAdminCommand]});
   console.log('Registered JTZ commands in',id);
  } catch (err) {
   console.error('Could not register JTZ commands in guild',id,'Discord code:',err.code,'status:',err.status,'message:',err.message);
