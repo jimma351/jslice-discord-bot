@@ -82,10 +82,14 @@ export function attachTickets(client){
    }
    if(select){
     await i.deferReply({ephemeral:true});
-    const dept=i.values[0],spec=departments[dept];if(!spec)throw Error('Invalid department.');
+    const choice=i.values[0];
+    const match=/^(fivem|dayz|aion2|general)_(community|bug)$/.exec(choice);
+    const dept=match?match[1]:choice;
+    const kind=match?(match[2]==='bug'?'Bug Report':'Community Support'):choice==='report'?'Player Report':choice==='dev'?'Development Support':null;
+    const spec=departments[dept];if(!spec)throw Error('Invalid department.');
     await g.channels.fetch();await g.roles.fetch();
     const member=await g.members.fetch(i.user.id);
-    const old=g.channels.cache.find(c=>{const t=info(c);return t&&t.owner===i.user.id&&t.dept===dept&&!t.closed;});
+    const old=g.channels.cache.find(c=>{const t=info(c);return t&&t.owner===i.user.id&&t.dept===dept&&(!kind||t.kind===kind)&&!t.closed;});
     if(old)return reply(i,'You already have an open '+spec.label+' ticket: '+old.toString());
     const roles=staffRoles(g,dept);
     if(!roles.length)throw Error('No routing roles exist for '+spec.label+'. Ticket not created to prevent privacy mistakes.');
@@ -94,8 +98,8 @@ export function attachTickets(client){
     let parent=g.channels.cache.find(c=>c.type===ChannelType.GuildCategory&&c.name==='🎟️ NXGC TICKETS');
     if(!parent)parent=await g.channels.create({name:'🎟️ NXGC TICKETS',type:ChannelType.GuildCategory,permissionOverwrites:[{id:g.id,deny:[P.ViewChannel]}]});
     const access=[{id:g.id,deny:[P.ViewChannel]},{id:i.user.id,allow:[P.ViewChannel,P.SendMessages,P.ReadMessageHistory,P.AttachFiles]},...roles.map(r=>({id:r.id,allow:[P.ViewChannel,P.SendMessages,P.ReadMessageHistory,P.AttachFiles]}))];
-    const ch=await g.channels.create({name:'ticket-'+dept+'-'+i.user.id.slice(-6),type:ChannelType.GuildText,parent:parent.id,permissionOverwrites:access,topic:tag+JSON.stringify({owner:i.user.id,dept,closed:false,claimed:null,created:Date.now()})});
-    await ch.send({content:'Ticket opened by <@'+i.user.id+'>. Department: **'+spec.label+'**\nDescribe your issue and a team member will respond.',components:[buttons()],allowedMentions:{users:[i.user.id]}});
+    const ch=await g.channels.create({name:'ticket-'+dept+'-'+i.user.id.slice(-6),type:ChannelType.GuildText,parent:parent.id,permissionOverwrites:access,topic:tag+JSON.stringify({owner:i.user.id,dept,kind,closed:false,claimed:null,created:Date.now()})});
+    await ch.send({content:'Ticket opened by <@'+i.user.id+'>. Department: **'+spec.label+'**'+(kind?'\nTicket type: **'+kind+'**':'')+'\nDescribe your issue and a team member will respond.',components:[buttons()],allowedMentions:{users:[i.user.id]}});
     await log(g,'**Ticket opened** | '+spec.label+' | '+ch.toString()+' | User: '+i.user.tag+' ('+i.user.id+')');
     return reply(i,'Your private ticket is ready: '+ch.toString());
    }
