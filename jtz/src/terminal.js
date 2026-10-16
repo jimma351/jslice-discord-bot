@@ -2,6 +2,7 @@ import {ActionRowBuilder,ButtonBuilder,ButtonStyle,EmbedBuilder,StringSelectMenu
 import {fileURLToPath} from 'node:url';
 import {isApproved} from './config.js';
 import {styledChannel} from './restyle.js';
+import {gameChoices,switchGameRoles} from './game-roles.js';
 
 const P=PermissionFlagsBits;
 const bannerPath=fileURLToPath(new URL('../assets/nexus-gaming-hub.png',import.meta.url));
@@ -10,7 +11,7 @@ const games=['FiveM','DayZ','Aion2'];
 const hasGame=(member,name)=>member.roles.cache.some(r=>r.name===name||r.name===name+' Access'||r.name==='All Games');
 const isVerified=m=>m.roles.cache.some(r=>r.name==='Verified');
 const isDev=m=>m.permissions.has(P.Administrator)||m.roles.cache.some(r=>['Developer','Lead Dev','Executive'].includes(r.name));
-const gameMenu=game=>new ActionRowBuilder().addComponents(new StringSelectMenuBuilder().setCustomId('jtzv2_game').setPlaceholder('🎮 Choose your game space').addOptions(games.map(g=>({label:g,value:g,default:g===game,emoji:g==='FiveM'?'🚓':g==='DayZ'?'🧟':'⚔️'}))));
+const gameMenu=game=>new ActionRowBuilder().addComponents(new StringSelectMenuBuilder().setCustomId('jtzv2_game').setPlaceholder('🎮 Switch game roles & channels').addOptions(gameChoices.map(g=>({label:g,value:g,default:g===game,emoji:g==='FiveM'?'🚓':g==='DayZ'?'🧟':g==='Aion2'?'⚔️':'🌐'}))));
 const channelLink=(member,name)=>{
  const channel=member.guild.channels.cache.find(c=>(c.name===name||c.name===styledChannel(name))&&c.permissionsFor(member)?.has(P.ViewChannel));
  return channel?'<#'+channel.id+'>':'the '+name+' channel';
@@ -36,7 +37,7 @@ const view=(member,game,tab)=>{
   .setFooter({text:'Nexus Gaming Hub • '+game+' • Your private player space'});
  const avatar=member.displayAvatarURL?.({size:256});
  if(avatar)embed.setThumbnail(avatar);
- if(tab==='dashboard')embed.setDescription('Your games. Your community. Your next session.').addFields(
+ if(tab==='dashboard')embed.setDescription('Choose a game below to switch your game roles and channels. **All Games** shows all three game areas. Community channels stay available; staff permissions may keep extra channels visible.').addFields(
   {name:'🎮 GAME SPACE',value:game,inline:true},
   {name:'🛡️ MEMBER STATUS',value:isVerified(member)?'Verified':'Administrator',inline:true},
   {name:'🔑 GAME ROLE',value:hasGame(member,game)?'Assigned':'Not assigned',inline:true},
@@ -67,14 +68,16 @@ export function attachTerminal(client){
    const update=(menu||(btn&&i.customId!=='jtzv2_open'))&&i.message?.flags.has(MessageFlags.Ephemeral);
    if(update)await i.deferUpdate();
    else await i.deferReply({flags:MessageFlags.Ephemeral});
-   const member=await i.guild.members.fetch(i.user.id);
+   let member=await i.guild.members.fetch(i.user.id);
    if(!isVerified(member)&&!member.permissions.has(P.Administrator))return i.editReply({content:'Please verify in '+channelLink(member,'verify-here')+' before using the Nexus Gaming Hub terminal.',embeds:[],components:[]});
-   let game=games.find(g=>hasGame(member,g))||'FiveM';
-   const selected=i.message?.components.flatMap(row=>row.components).find(c=>c.customId==='jtzv2_game')?.options?.find(option=>option.default)?.value;
-   if(games.includes(selected))game=selected;
-   if(menu){game=i.values[0];if(!games.includes(game))return i.editReply({content:'Invalid game. Reopen /jtz-terminal.',embeds:[],components:[]});}
+   if(menu){
+    try { member=await switchGameRoles(i.guild,i.user.id,i.values[0]); }
+    catch(error){return await i.editReply({content:'Game roles were not switched. '+error.message,embeds:[],components:[],attachments:[]});}
+   }
+   const owned=games.filter(g=>hasGame(member,g));
+   const game=member.roles.cache.some(r=>r.name==='All Games')?'All Games':owned.length===1?owned[0]:'Choose a game';
    const tab=btn&&i.customId!=='jtzv2_open'?i.customId.slice('jtzv2_'.length):'dashboard';
-   return await i.editReply({content:null,attachments:[],files:[bannerFile()],embeds:[view(member,game,tab)],components:[gameMenu(game),nav()]});
+   return await i.editReply({content:menu?'Game roles updated: **'+game+'**. Community channels stay available. Staff and administrator permissions can keep other channels visible.':null,attachments:[],files:[bannerFile()],embeds:[view(member,game,tab)],components:[gameMenu(game),nav()]});
   }catch(e){
    console.error('JTZV2 terminal',e);
    const content='Terminal unavailable. Please try /jtz-terminal again or contact staff.';
