@@ -21,8 +21,8 @@ const nav=()=>new ActionRowBuilder().addComponents(
  new ButtonBuilder().setCustomId('jtzv2_bio').setLabel('Player Bio').setStyle(ButtonStyle.Secondary),
  new ButtonBuilder().setCustomId('jtzv2_passport').setLabel('Passport').setStyle(ButtonStyle.Secondary),
  new ButtonBuilder().setCustomId('jtzv2_support').setLabel('Open Support').setStyle(ButtonStyle.Secondary),
- new ButtonBuilder().setCustomId('jtzv2_events').setLabel('Events').setStyle(ButtonStyle.Secondary),
- new ButtonBuilder().setCustomId('jtzv2_dev').setLabel('Dev Center').setStyle(ButtonStyle.Secondary));
+ new ButtonBuilder().setCustomId('jtzv2_events').setLabel('Events').setStyle(ButtonStyle.Secondary));
+const devNav=()=>new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('jtzv2_dev').setLabel('Dev Center').setStyle(ButtonStyle.Secondary));
 const supportMenu=game=>new ActionRowBuilder().addComponents(new StringSelectMenuBuilder().setCustomId('jtz_ticket_department').setPlaceholder('Choose your ticket type').addOptions([{label:'Development Support',value:'dev',emoji:'💻'},{label:'Community Support',value:(games.includes(game)?game.toLowerCase():'general')+'_community',emoji:'🎮'},{label:'Report a Player',value:'report',emoji:'🚨'},{label:'Report a Bug',value:(games.includes(game)?game.toLowerCase():'general')+'_bug',emoji:'🐛'}]));
 const view=(member,game,tab)=>{
  const title={dashboard:'Command Center',bio:'Player Bio',passport:'Gaming Passport',support:'Support Center',events:'Community Events',dev:'Development Center'}[tab]||'Command Center';
