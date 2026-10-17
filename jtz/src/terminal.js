@@ -21,12 +21,13 @@ const nav=()=>new ActionRowBuilder().addComponents(
  new ButtonBuilder().setCustomId('jtzv2_bio').setLabel('Player Bio').setStyle(ButtonStyle.Secondary),
  new ButtonBuilder().setCustomId('jtzv2_support').setLabel('Open Support').setStyle(ButtonStyle.Secondary),
  new ButtonBuilder().setCustomId('jtzv2_events').setLabel('Events').setStyle(ButtonStyle.Secondary));
+const bioLink=()=>new ActionRowBuilder().addComponents(new ButtonBuilder().setLabel('Open Player Bio Editor').setStyle(ButtonStyle.Link).setURL('https://nxgc-player-bio-production.up.railway.app/'));
 const devNav=()=>new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('jtzv2_dev').setLabel('Dev Center').setStyle(ButtonStyle.Secondary));
 const supportMenu=game=>new ActionRowBuilder().addComponents(new StringSelectMenuBuilder().setCustomId('jtz_ticket_department').setPlaceholder('Choose your ticket type').addOptions([{label:'Development Support',value:'dev',emoji:'💻'},{label:'Community Support',value:(games.includes(game)?game.toLowerCase():'general')+'_community',emoji:'🎮'},{label:'Report a Player',value:'report',emoji:'🚨'},{label:'Report a Bug',value:(games.includes(game)?game.toLowerCase():'general')+'_bug',emoji:'🐛'}]));
 const view=(member,game,tab)=>{
  const title={dashboard:'Command Center',bio:'Player Bio Studio',support:'Support Center',events:'Community Events',dev:'Development Center'}[tab]||'Command Center';
  let description='';
- if(tab==='bio')description='**NXGC PLAYER BIO STUDIO**\n\nCustomize your banner, avatar, gaming moments, achievements, goals, and group affiliation in the visual editor preview.\n\n**Current status:** The editor prototype is saved in the JTZ GitHub repository but is not yet hosted as a website. Browser drafts and image replacements work in the prototype; Discord account saving and publishing are not connected.\n\n**Next step:** Staff will provide the hosted editor link once deployment is ready.';
+ if(tab==='bio')description='**NXGC PLAYER BIO STUDIO**\\n\\nTap **Open Player Bio Editor** below to design your gaming profile, replace all panel pictures, and save a private browser draft.\\n\\n**Preview:** Discord sign-in and publishing to #players-bios are not yet connected.';
  else if(tab==='support')description='**'+game+' Support**\nSelect a ticket type below. JTZ will create a private ticket routed to the appropriate staff team.\n\n💻 Development Support\n🎮 Community Support\n🚨 Report a Player\n🐛 Report a Bug';
  else if(tab==='events')description='Community events and registration will appear here when an events source is connected. For now, check your game announcements.';
  else if(tab==='dev')description=isDev(member)?'Developer access confirmed. Your private development channels are controlled by Discord permissions; project tools and release checklists are planned.':'🔒 Developer access required. This panel does not grant access to private channels.';
@@ -78,7 +79,7 @@ export function attachTerminal(client){
    const owned=games.filter(g=>hasGame(member,g));
    const game=member.roles.cache.some(r=>r.name==='All Games')?'All Games':owned.length===1?owned[0]:'Choose a game';
    const tab=btn&&i.customId!=='jtzv2_open'?i.customId.slice('jtzv2_'.length):'dashboard';
-   return await i.editReply({content:menu?'Game roles updated: **'+game+'**. Community channels stay available. Staff and administrator permissions can keep other channels visible.':null,attachments:[],files:[bannerFile()],embeds:[view(member,game,tab)],components:[gameMenu(game),nav(),devNav(),...(tab==='support'?[supportMenu(game)]:[])]});
+   return await i.editReply({content:menu?'Game roles updated: **'+game+'**. Community channels stay available. Staff and administrator permissions can keep other channels visible.':null,attachments:[],files:[bannerFile()],embeds:[view(member,game,tab)],components:[gameMenu(game),nav(),devNav(),...(tab==='bio'?[bioLink()]:[]),...(tab==='support'?[supportMenu(game)]:[])]});
   }catch(e){
    console.error('JTZV2 terminal',e);
    const content='Terminal unavailable. Please try /jtz-terminal again or contact staff.';
