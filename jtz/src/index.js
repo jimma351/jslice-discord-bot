@@ -49,12 +49,13 @@ client.on('interactionCreate', async interaction => {
     return interaction.reply({content:'Game roles updated: '+(selected.join(', ')||'none'),ephemeral:true});
    }
    if (interaction.customId==='jtz_verify') {
+    await interaction.deferReply({flags:64});
     const member=await guild.members.fetch(interaction.user.id);
     const verified=guild.roles.cache.find(r=>r.name==='Verified');
     const unverified=guild.roles.cache.find(r=>r.name==='Unverified');
     if (verified) await member.roles.add(verified);
     if (unverified) await member.roles.remove(unverified);
-    return interaction.reply({content:'Verified! Welcome to NXGC.',ephemeral:true});
+    return interaction.editReply({content:'Verified! Welcome to NXGC.'});
    }
    if (interaction.customId==='jtz_announcements') {
     const member=await guild.members.fetch(interaction.user.id);
@@ -138,4 +139,5 @@ client.on('interactionCreate', async interaction => {
   await interaction.editReply('JTZ setup complete. Created '+created+' channels/categories (plus any missing roles). Existing channels were preserved. Check permissions and native Onboarding before inviting members.');
  } catch(err) {console.error(err);await interaction.editReply('Setup stopped: '+err.message);}
 });
+client.on('error',error=>console.error('JTZ Discord client error:',error));
 client.login(token);
