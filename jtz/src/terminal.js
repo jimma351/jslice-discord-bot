@@ -80,7 +80,7 @@ export function attachTerminal(client){
    const owned=games.filter(g=>hasGame(member,g));
    const game=member.roles.cache.some(r=>r.name==='All Games')?'All Games':owned.length===1?owned[0]:'Choose a game';
    const tab=btn&&i.customId!=='jtzv2_open'?i.customId.slice('jtzv2_'.length):'dashboard';
-   return await i.editReply({content:menu?'Game roles updated: **'+game+'**. Community channels stay available. Staff and administrator permissions can keep other channels visible.':null,attachments:[],files:[bannerFile()],embeds:[view(member,game,tab)],components:[gameMenu(game),nav(),...(tab==='support'?[supportMenu(game)]:[])]});
+   return await i.editReply({content:menu?'Game roles updated: **'+game+'**. Community channels stay available. Staff and administrator permissions can keep other channels visible.':null,attachments:[],files:[bannerFile()],embeds:[view(member,game,tab)],components:[gameMenu(game),nav(),devNav(),...(tab==='support'?[supportMenu(game)]:[])]});
   }catch(e){
    console.error('JTZV2 terminal',e);
    const content='Terminal unavailable. Please try /jtz-terminal again or contact staff.';
