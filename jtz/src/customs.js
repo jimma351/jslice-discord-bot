@@ -173,7 +173,7 @@ export function attachCustoms(client){client.on('interactionCreate',async i=>{
  if(!i.isChatInputCommand()||i.commandName!=='jtz-customs')return;
  if(!i.inGuild()||!i.memberPermissions?.has(P.Administrator))return i.reply({content:'Administrator required.',ephemeral:true});
  const names=Object.keys(catalog),count=Object.values(catalog).reduce((n,a)=>n+a.length,0);
- if(i.options.getSubcommand()==='preview')return i.reply({content:'**Jimbo Customs preview**\\n1 category, 2 roles, 3 text channels, 3 voice channels, '+names.length+' vehicle forums and '+count+' vehicle posts.\\nForums: '+names.join(', ')+'\\nExisting channels are NOT moved or deleted. Run /jtz-customs apply to create the new layout.',ephemeral:true});
+ if(i.options.getSubcommand()==='preview')return i.reply({content:'**Jimbo Customs preview**\n1 category, 2 roles, 3 text channels, 3 voice channels, '+names.length+' vehicle forums and '+count+' vehicle posts.\nForums: '+names.join(', ')+'\nExisting channels are NOT moved or deleted. Run /jtz-customs apply to create the new layout.',ephemeral:true});
  await i.deferReply({ephemeral:true});
  try{
  const g=i.guild;await g.roles.fetch();await g.channels.fetch();const me=await g.members.fetchMe();
@@ -198,7 +198,7 @@ export function attachCustoms(client){client.on('interactionCreate',async i=>{
  for(let page=0;page<20;page++){const archived=await channel.threads.fetchArchived({limit:100,...(before?{before}:{})}).catch(()=>null);if(!archived||!archived.threads.size)break;for(const t of archived.threads.values())existing.add(t.name);before=archived.threads.last()?.archiveTimestamp;if(!archived.hasMore)break;}
  for(const vehicle of catalog[spec.name]){
  if(existing.has(vehicle)){skipped++;continue;}
- await channel.threads.create({name:vehicle,message:{content:'**'+vehicle+'**\\nJimbo Customs vehicle listing. Add vehicle photos, details and discussion in this post.'},reason:'Jimbo Customs catalog import'});posts++;
+ await channel.threads.create({name:vehicle,message:{content:'**'+vehicle+'**\nJimbo Customs vehicle listing. Add vehicle photos, details and discussion in this post.'},reason:'Jimbo Customs catalog import'});posts++;
  }
  }
  await i.editReply('Jimbo Customs created: role '+role.name+', '+made+' new channels, '+posts+' vehicle posts ('+skipped+' already existed). Original vehicle channels were left untouched. Use Jimbo Customs for membership and Jimbo Customs Staff for private ticket access. Ticket department is available in JTZ.');
