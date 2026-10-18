@@ -24,7 +24,7 @@ client.once('clientReady', async () => {
  for (const guild of client.guilds.cache.values()) {
   if (!isApproved(guild.id)) continue;
   try {
-   const registered = await guild.commands.set([securityCommand,welcomeCommand,lockdownCommand,honeypotCommand,ticketCommand,terminalCommand,terminalAdminCommand,customsCommand,{name:'jtz-setup',description:'Preview or create NXGC server roles and channels',default_member_permissions:PermissionFlagsBits.Administrator.toString(),options:[{type:1,name:'preview',description:'Preview server setup'},{type:1,name:'apply',description:'Create missing roles and channels'},{type:1,name:'restyle-preview',description:'Preview channel font changes'},{type:1,name:'restyle-apply',description:'Rename existing channels and create private QS log placeholders'}]}]);
+   const registered = await guild.commands.set([securityCommand,welcomeCommand,lockdownCommand,honeypotCommand,ticketCommand,terminalCommand,terminalAdminCommand,customsCommand,{name:'jtz-setup',description:'Preview or create Jimma Lounge server roles and channels',default_member_permissions:PermissionFlagsBits.Administrator.toString(),options:[{type:1,name:'preview',description:'Preview server setup'},{type:1,name:'apply',description:'Create missing roles and channels'},{type:1,name:'restyle-preview',description:'Preview channel font changes'},{type:1,name:'restyle-apply',description:'Rename existing channels and create private QS log placeholders'}]}]);
    const verified = await guild.commands.fetch();
    for (const command of registered.values()) {
     if (!verified.some(c => c.name === command.name)) throw new Error('Missing registered command: '+command.name);
@@ -57,7 +57,7 @@ client.on('interactionCreate', async interaction => {
     const unverified=guild.roles.cache.find(r=>r.name==='Unverified');
     if (verified) await member.roles.add(verified);
     if (unverified) await member.roles.remove(unverified);
-    return interaction.editReply({content:'Verified! Welcome to NXGC.'});
+    return interaction.editReply({content:'Verified! Welcome to Jimma Lounge.'});
    }
    if (interaction.customId==='jtz_announcements') {
     const member=await guild.members.fetch(interaction.user.id);
