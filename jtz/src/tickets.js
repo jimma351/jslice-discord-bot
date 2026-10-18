@@ -3,6 +3,7 @@ import {isApproved} from './config.js';
 import {styledChannel} from './restyle.js';
 const P=PermissionFlagsBits;
 const departments={
+ customs:{label:'🔧 Jimbo Customs Support',roles:['Jimbo Customs','Executive']},
  fivem:{label:'🚓 FiveM Support',roles:['FiveM Admin','Executive']},
  dayz:{label:'🧟 DayZ Support',roles:['DayZ Admin','Executive']},
  aion2:{label:'⚔️ Aion2 Support',roles:['Aion2 Admin','Executive']},
@@ -83,7 +84,7 @@ export function attachTickets(client){
    if(select){
     await i.deferReply({ephemeral:true});
     const choice=i.values[0];
-    const match=/^(fivem|dayz|aion2|general)_(community|bug)$/.exec(choice);
+    const match=/^(fivem|dayz|aion2|general|customs)_(community|bug)$/.exec(choice);
     const dept=match?match[1]:choice;
     const kind=match?(match[2]==='bug'?'Bug Report':'Community Support'):choice==='report'?'Player Report':choice==='dev'?'Development Support':null;
     const spec=departments[dept];if(!spec)throw Error('Invalid department.');
