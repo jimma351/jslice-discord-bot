@@ -1,5 +1,5 @@
 import { Client, GatewayIntentBits, PermissionFlagsBits, ChannelType, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } from 'discord.js';
-import { token, isApproved } from './config.js';
+import { token, isApproved, isOwner } from './config.js';
 import { roles, categories } from './plan.js';
 import { restyle, styledCategory, styledChannel } from './restyle.js';
 import { attachSecurity, securityCommand } from './security.js';
@@ -90,7 +90,7 @@ client.on('interactionCreate', async interaction => {
 
  if (!interaction.isChatInputCommand() || interaction.commandName !== 'jtz-setup') return;
  if (!interaction.inGuild() || !isApproved(interaction.guildId)) return interaction.reply({content:'This server is not approved for JTZ.',ephemeral:true});
- if (!interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)) return interaction.reply({content:'Administrator permission required.',ephemeral:true});
+ if (!isOwner(interaction.user.id)) return interaction.reply({content:'JTZ management is owner-only.',flags:64});
  const action = interaction.options.getSubcommand();
  if (action === 'restyle-preview') return restyle(interaction,true);
  if (action === 'restyle-apply') return restyle(interaction,false);
