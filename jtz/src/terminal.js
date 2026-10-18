@@ -27,16 +27,16 @@ const supportMenu=game=>new ActionRowBuilder().addComponents(new StringSelectMen
 const view=(member,game,tab)=>{
  const title={dashboard:'Command Center',bio:'Player Bio Studio',support:'Support Center',events:'Community Events',dev:'Development Center'}[tab]||'Command Center';
  let description='';
- if(tab==='bio')description='**NXGC PLAYER BIO STUDIO**\\n\\nTap **Open Player Bio Editor** below to design your gaming profile, replace all panel pictures, and save a private browser draft.\\n\\n**Preview:** Discord sign-in and publishing to #players-bios are not yet connected.';
+ if(tab==='bio')description='**JIMMA LOUNGE PLAYER BIO STUDIO**\\n\\nTap **Open Player Bio Editor** below to design your gaming profile, replace all panel pictures, and save a private browser draft.\\n\\n**Preview:** Discord sign-in and publishing to #players-bios are not yet connected.';
  else if(tab==='support')description='**'+game+' Support**\nSelect a ticket type below. JTZ will create a private ticket routed to the appropriate staff team.\n\n💻 Development Support\n🎮 Community Support\n🚨 Report a Player\n🐛 Report a Bug';
  else if(tab==='events')description='Community events and registration will appear here when an events source is connected. For now, check your game announcements.';
  else if(tab==='dev')description=isDev(member)?'Developer access confirmed. Your private development channels are controlled by Discord permissions; project tools and release checklists are planned.':'🔒 Developer access required. This panel does not grant access to private channels.';
- else description='**Game:** '+game+'\n**Game role:** '+(hasGame(member,game)?'Assigned':'Choose your roles in '+channelLink(member,'choose-your-games'))+'\n**Live server status:** Not connected\n\nYour personalized Nexus Gaming Hub hub. The game menu browses this terminal; channel access follows Discord permissions. Choose a section below.';
+ else description='**Game:** '+game+'\n**Game role:** '+(hasGame(member,game)?'Assigned':'Choose your roles in '+channelLink(member,'choose-your-games'))+'\n**Live server status:** Not connected\n\nYour personalized Jimma Lounge Hub hub. The game menu browses this terminal; channel access follows Discord permissions. Choose a section below.';
  const embed=new EmbedBuilder().setColor(tab==='bio'||tab==='dev'?0xa855f7:0x22d3ee)
-  .setAuthor({name:member.displayName||member.user?.username||'Nexus Player'})
-  .setTitle('NEXUS GAMING HUB • '+title).setDescription(description)
+  .setAuthor({name:member.displayName||member.user?.username||'Jimma Lounge Player'})
+  .setTitle('JIMMA LOUNGE HUB • '+title).setDescription(description)
   .setImage('attachment://nexus-gaming-hub.png')
-  .setFooter({text:'Nexus Gaming Hub • '+game+' • Your private player space'});
+  .setFooter({text:'Jimma Lounge Hub • '+game+' • Your private player space'});
  const avatar=member.displayAvatarURL?.({size:256});
  if(avatar)embed.setThumbnail(avatar);
  if(tab==='dashboard')embed.setDescription('Choose a game below to switch your game roles and channels. **All Games** shows all three game areas. Community channels stay available; staff permissions may keep extra channels visible.').addFields(
@@ -49,8 +49,8 @@ const view=(member,game,tab)=>{
   {name:'EXPLORE YOUR HUB',value:'**Player Bio** · Customizable gaming profile\n**Support** · Open a private ticket\n**Events** · Community updates\n**Dev Center** · Development access'});
  return embed;
 };
-export const terminalCommand={name:'jtz-terminal',description:'Open your private Nexus Gaming Hub player terminal'};
-export const terminalAdminCommand={name:'jtzv2-panel',description:'Post the Nexus Gaming Hub Player Terminal launch button',default_member_permissions:P.Administrator.toString()};
+export const terminalCommand={name:'jtz-terminal',description:'Open your private Jimma Lounge Hub player terminal'};
+export const terminalAdminCommand={name:'jtzv2-panel',description:'Post the Jimma Lounge Hub Player Terminal launch button',default_member_permissions:P.Administrator.toString()};
 export function attachTerminal(client){
  client.on('interactionCreate',async i=>{
   if(!i.inGuild()||!isApproved(i.guildId))return;
@@ -63,15 +63,15 @@ export function attachTerminal(client){
    if(panel){
     if(!isOwner(i.user.id))return i.reply({content:'JTZ management is owner-only.',flags:64});
     await i.deferReply({flags:MessageFlags.Ephemeral});
-    await i.channel.send({files:[bannerFile()],embeds:[new EmbedBuilder().setTitle('NEXUS GAMING HUB').setColor(0x22d3ee).setImage('attachment://nexus-gaming-hub.png').setDescription('Your personalized gaming hub. Open your dashboard, private support tickets, events, and developer tools. The terminal is private to each member.')],components:[new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('jtzv2_open').setLabel('Open My Terminal').setStyle(ButtonStyle.Primary))]});
-    return i.editReply({content:'Nexus Gaming Hub launch panel posted.'});
+    await i.channel.send({files:[bannerFile()],embeds:[new EmbedBuilder().setTitle('JIMMA LOUNGE HUB').setColor(0x22d3ee).setImage('attachment://nexus-gaming-hub.png').setDescription('Your personalized gaming hub. Open your dashboard, private support tickets, events, and developer tools. The terminal is private to each member.')],components:[new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('jtzv2_open').setLabel('Open My Terminal').setStyle(ButtonStyle.Primary))]});
+    return i.editReply({content:'Jimma Lounge Hub launch panel posted.'});
    }
    // Only update private terminal messages; the shared launch panel stays public.
    const update=(menu||(btn&&i.customId!=='jtzv2_open'))&&i.message?.flags.has(MessageFlags.Ephemeral);
    if(update)await i.deferUpdate();
    else await i.deferReply({flags:MessageFlags.Ephemeral});
    let member=await i.guild.members.fetch(i.user.id);
-   if(!isVerified(member)&&!member.permissions.has(P.Administrator))return i.editReply({content:'Please verify in '+channelLink(member,'verify-here')+' before using the Nexus Gaming Hub terminal.',embeds:[],components:[]});
+   if(!isVerified(member)&&!member.permissions.has(P.Administrator))return i.editReply({content:'Please verify in '+channelLink(member,'verify-here')+' before using the Jimma Lounge Hub terminal.',embeds:[],components:[]});
    if(menu){
     try { member=await switchGameRoles(i.guild,i.user.id,i.values[0]); }
     catch(error){return await i.editReply({content:'Game roles were not switched. '+error.message,embeds:[],components:[],attachments:[]});}
