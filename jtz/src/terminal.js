@@ -1,6 +1,6 @@
 import {ActionRowBuilder,ButtonBuilder,ButtonStyle,EmbedBuilder,StringSelectMenuBuilder,PermissionFlagsBits,MessageFlags} from 'discord.js';
 import {fileURLToPath} from 'node:url';
-import {isApproved} from './config.js';
+import {isApproved,isOwner} from './config.js';
 import {styledChannel} from './restyle.js';
 import {gameChoices,switchGameRoles} from './game-roles.js';
 
@@ -61,7 +61,7 @@ export function attachTerminal(client){
   if(!open&&!panel&&!btn&&!menu)return;
   try{
    if(panel){
-    if(!i.memberPermissions?.has(P.Administrator))return i.reply({content:'Administrator required.',ephemeral:true});
+    if(!isOwner(i.user.id))return i.reply({content:'JTZ management is owner-only.',flags:64});
     await i.deferReply({flags:MessageFlags.Ephemeral});
     await i.channel.send({files:[bannerFile()],embeds:[new EmbedBuilder().setTitle('NEXUS GAMING HUB').setColor(0x22d3ee).setImage('attachment://nexus-gaming-hub.png').setDescription('Your personalized gaming hub. Open your dashboard, private support tickets, events, and developer tools. The terminal is private to each member.')],components:[new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('jtzv2_open').setLabel('Open My Terminal').setStyle(ButtonStyle.Primary))]});
     return i.editReply({content:'Nexus Gaming Hub launch panel posted.'});
@@ -79,7 +79,8 @@ export function attachTerminal(client){
    const owned=games.filter(g=>hasGame(member,g));
    const game=member.roles.cache.some(r=>r.name==='All Games')?'All Games':owned.length===1?owned[0]:'Choose a game';
    const tab=btn&&i.customId!=='jtzv2_open'?i.customId.slice('jtzv2_'.length):'dashboard';
-   return await i.editReply({content:menu?'Game roles updated: **'+game+'**. Community channels stay available. Staff and administrator permissions can keep other channels visible.':null,attachments:[],files:[bannerFile()],embeds:[view(member,game,tab)],components:[gameMenu(game),nav(),devNav(),...(tab==='bio'?[bioLink()]:[]),...(tab==='support'?[supportMenu(game)]:[])]});
+   if(tab==='dev'&&!isOwner(i.user.id))return i.editReply({content:'Owner-only area.',embeds:[],components:[]});
+   return await i.editReply({content:menu?'Game roles updated: **'+game+'**. Community channels stay available. Staff and administrator permissions can keep other channels visible.':null,attachments:[],files:[bannerFile()],embeds:[view(member,game,tab)],components:[gameMenu(game),nav(),...(isOwner(i.user.id)?[devNav()]:[]),...(tab==='bio'?[bioLink()]:[]),...(tab==='support'?[supportMenu(game)]:[])]});
   }catch(e){
    console.error('JTZV2 terminal',e);
    const content='Terminal unavailable. Please try /jtz-terminal again or contact staff.';
