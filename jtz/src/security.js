@@ -1,3 +1,4 @@
+import {isOwner} from './config.js';
 import { GatewayIntentBits, PermissionFlagsBits, ChannelType } from 'discord.js';
 import { isApproved } from './config.js';
 import { styledChannel } from './restyle.js';
@@ -69,6 +70,7 @@ export function attachSecurity(client){
  });
  client.on('interactionCreate',async i=>{
   if(!i.isChatInputCommand()||i.commandName!=='jtz-security')return;
+  if(!isOwner(i.user.id))return i.reply({content:'JTZ management is owner-only.',flags:64});
   if(!i.inGuild()||!isApproved(i.guildId))return i.reply({content:'Not an approved guild.',ephemeral:true});
   if(!i.memberPermissions?.has(PermissionFlagsBits.ManageGuild))return i.reply({content:'Manage Server permission required.',ephemeral:true});
   return i.reply({content:'**JTZ Security — Phase 1**\n• Member join/leave: '+(process.env.JTZ_MEMBER_EVENTS==='true'?'enabled (requires Discord Members Intent)':'disabled (set JTZ_MEMBER_EVENTS=true)')+'\n• Ban events: enabled with GuildModeration intent\n• New account and 8-joins/60s raid alerts: enabled\n• Channel/role deletion alerts and 3-deletions/60s anti-nuke warnings: enabled\n• Dangerous role permission grants and private-channel visibility alerts: enabled\n• Message flood (7 in 8s) and mass-mention alerts: enabled when Message Content and relevant intents are available\n• Automatic kicks/bans/deletions: **OFF**\n• Logs: existing private moderation-logs / jtz-security-alerts channels\n• Full control panel, ticket tiers, applications and persistent moderation records: not yet implemented.',ephemeral:true});
