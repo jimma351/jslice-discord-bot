@@ -1,3 +1,4 @@
+import {isOwner} from './config.js';
 import {ChannelType,PermissionFlagsBits as P} from 'discord.js';
 const catalog={
  "mlos-mech-shops": [
@@ -173,6 +174,7 @@ const BATCH=12;
 const running=new Set();
 export function attachCustoms(client){client.on('interactionCreate',async i=>{
  if(!i.isChatInputCommand()||i.commandName!=='jtz-customs')return;
+  if(!isOwner(i.user.id))return i.reply({content:'JTZ management is owner-only.',flags:64});
  if(!i.inGuild()||!i.memberPermissions?.has(P.Administrator))return i.reply({content:'Administrator required.',flags:64});
  const names=Object.keys(catalog),count=Object.values(catalog).reduce((n,a)=>n+a.length,0);
  if(i.options.getSubcommand()==='preview')return i.reply({content:'**Jimbo Customs**: '+names.length+' vehicle forums and '+count+' catalog posts. Import creates up to '+BATCH+' missing posts per run. Existing posts and old channels are preserved.',flags:64});
