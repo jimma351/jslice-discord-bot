@@ -1,3 +1,4 @@
+import {isOwner} from './config.js';
 import {ChannelType,PermissionFlagsBits} from 'discord.js';
 import {isApproved} from './config.js';
 import {styledCategory,styledChannel} from './restyle.js';
@@ -30,6 +31,7 @@ export function attachLockdown(client){
 
  client.on('interactionCreate',async i=>{
   if(!i.isChatInputCommand()||i.commandName!=='jtz-lockdown')return;
+  if(!isOwner(i.user.id))return i.reply({content:'JTZ management is owner-only.',flags:64});
   if(!i.inGuild()||!isApproved(i.guildId))return i.reply({content:'Not an approved guild.',ephemeral:true});
   if(!i.memberPermissions?.has(P.Administrator))return i.reply({content:'Administrator required.',ephemeral:true});
   await i.deferReply({ephemeral:true});
