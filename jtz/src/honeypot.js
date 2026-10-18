@@ -12,7 +12,7 @@ const log=async(g,text)=>{
  if(ch)await ch.send({content:text,allowedMentions:{parse:[]}}).catch(e=>console.error('Honeypot log:',e.message));
  else console.warn('JTZ honeypot log channel missing',g.id,text);
 };
-export const honeypotCommand={name:'jtz-honeypot',description:'Set up and safely test the NXGC honeypot',default_member_permissions:P.Administrator.toString(),options:[
+export const honeypotCommand={name:'jtz-honeypot',description:'Set up and safely test the Jimma Lounge honeypot',default_member_permissions:P.Administrator.toString(),options:[
  {type:1,name:'preview',description:'Inspect honeypot setup and current mode'},
  {type:1,name:'setup',description:'Create honeypot in test mode (no bans)'},
  {type:1,name:'arm',description:'Enable automatic bans for unverified messages'},
