@@ -7,12 +7,12 @@ import { honeypotCommand } from './honeypot.js';
 import { ticketCommand } from './tickets.js';
 import { terminalCommand, terminalAdminCommand } from './terminal.js';
 if (!token || !clientId || !guildIds.length) throw new Error('Configure DISCORD_TOKEN, CLIENT_ID and ALLOWED_GUILD_IDS');
-const cmd = new SlashCommandBuilder().setName('jtz-setup').setDescription('Preview or build the NXGC server layout')
+const cmd = new SlashCommandBuilder().setName('jtz-setup').setDescription('Preview or build the Jimma Lounge server layout')
  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
  .addSubcommand(s => s.setName('preview').setDescription('Preview planned roles and channels'))
  .addSubcommand(s => s.setName('apply').setDescription('Create missing roles and channels'))
- .addSubcommand(s => s.setName('restyle-preview').setDescription('Preview NXGC styled names'))
- .addSubcommand(s => s.setName('restyle-apply').setDescription('Apply NXGC channel styling'));
+ .addSubcommand(s => s.setName('restyle-preview').setDescription('Preview Jimma Lounge styled names'))
+ .addSubcommand(s => s.setName('restyle-apply').setDescription('Apply Jimma Lounge channel styling'));
 const rest = new REST({version:'10'}).setToken(token);
 const bot = await rest.get(Routes.user('@me'));
 console.log('Authenticated Discord bot:', bot.username, 'user ID:', bot.id);
