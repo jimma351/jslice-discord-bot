@@ -1,3 +1,4 @@
+import {isOwner} from './config.js';
 import {ActionRowBuilder,ButtonBuilder,ButtonStyle,ChannelType,EmbedBuilder,PermissionFlagsBits,StringSelectMenuBuilder,AttachmentBuilder,ModalBuilder,TextInputBuilder,TextInputStyle} from 'discord.js';
 import {isApproved} from './config.js';
 import {styledChannel} from './restyle.js';
@@ -63,6 +64,7 @@ export function attachTickets(client){
  client.on('interactionCreate',async i=>{
   if(!i.inGuild()||!isApproved(i.guildId))return;
   const cmd=i.isChatInputCommand()&&i.commandName==='jtz-tickets';
+  if(cmd&&!isOwner(i.user.id))return i.reply({content:'JTZ management is owner-only.',flags:64});
   const select=i.isStringSelectMenu()&&i.customId==='jtz_ticket_department';
   const btn=i.isButton()&&i.customId.startsWith('jtz_t_');
   const modal=i.isModalSubmit()&&i.customId==='jtz_t_add_submit';
