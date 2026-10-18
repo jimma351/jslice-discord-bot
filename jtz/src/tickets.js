@@ -57,7 +57,7 @@ const makeTranscript=async c=>{
  }
  return {file:new AttachmentBuilder(Buffer.from(lines.reverse().join('\n')||'No messages'),{name:'ticket-'+c.id+'.txt'}),count};
 };
-export const ticketCommand={name:'jtz-tickets',description:'Manage the NXGC private ticket system',default_member_permissions:P.Administrator.toString(),options:[
+export const ticketCommand={name:'jtz-tickets',description:'Manage the Jimma Lounge private ticket system',default_member_permissions:P.Administrator.toString(),options:[
  {type:1,name:'panel',description:'Post the department ticket panel in open-a-ticket'},
  {type:1,name:'status',description:'Check ticket setup and routing'}]};
 export function attachTickets(client){
@@ -80,7 +80,7 @@ export function attachTickets(client){
     }
     const ch=find(g,'open-a-ticket');
     if(!ch)throw Error('Cannot find #open-a-ticket.');
-    await ch.send({embeds:[new EmbedBuilder().setTitle('🎫 NXGC | Support Center').setDescription('Select a department below to create a **private** ticket. Only you and that department’s authorized staff can see it. Please do not share sensitive account credentials.').setColor(0x5279d6)],components:[panel()]});
+    await ch.send({embeds:[new EmbedBuilder().setTitle('🎫 Jimma Lounge | Support Center').setDescription('Select a department below to create a **private** ticket. Only you and that department’s authorized staff can see it. Please do not share sensitive account credentials.').setColor(0x5279d6)],components:[panel()]});
     return reply(i,'Department ticket panel posted in '+ch.toString()+'. The old Open Ticket button remains usable until its message is removed.');
    }
    if(select){
@@ -98,8 +98,8 @@ export function attachTickets(client){
     if(!roles.length)throw Error('No routing roles exist for '+spec.label+'. Ticket not created to prevent privacy mistakes.');
     const me=await g.members.fetchMe();
     if(!me.permissions.has(P.ManageChannels))throw Error('JTZ needs Manage Channels.');
-    let parent=g.channels.cache.find(c=>c.type===ChannelType.GuildCategory&&c.name==='🎟️ NXGC TICKETS');
-    if(!parent)parent=await g.channels.create({name:'🎟️ NXGC TICKETS',type:ChannelType.GuildCategory,permissionOverwrites:[{id:g.id,deny:[P.ViewChannel]}]});
+    let parent=g.channels.cache.find(c=>c.type===ChannelType.GuildCategory&&c.name==='🎟️ Jimma Lounge TICKETS');
+    if(!parent)parent=await g.channels.create({name:'🎟️ Jimma Lounge TICKETS',type:ChannelType.GuildCategory,permissionOverwrites:[{id:g.id,deny:[P.ViewChannel]}]});
     const access=[{id:g.id,deny:[P.ViewChannel]},{id:i.user.id,allow:[P.ViewChannel,P.SendMessages,P.ReadMessageHistory,P.AttachFiles]},...roles.map(r=>({id:r.id,allow:[P.ViewChannel,P.SendMessages,P.ReadMessageHistory,P.AttachFiles]}))];
     const ch=await g.channels.create({name:'ticket-'+dept+'-'+i.user.id.slice(-6),type:ChannelType.GuildText,parent:parent.id,permissionOverwrites:access,topic:tag+JSON.stringify({owner:i.user.id,dept,kind,closed:false,claimed:null,created:Date.now()})});
     await ch.send({content:'Ticket opened by <@'+i.user.id+'>. Department: **'+spec.label+'**'+(kind?'\nTicket type: **'+kind+'**':'')+'\nDescribe your issue and a team member will respond.',components:[buttons()],allowedMentions:{users:[i.user.id]}});
