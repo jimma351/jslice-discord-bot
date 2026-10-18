@@ -3,7 +3,7 @@ import {isApproved} from './config.js';
 import {styledChannel} from './restyle.js';
 const P=PermissionFlagsBits;
 const departments={
- customs:{label:'🔧 Jimbo Customs Support',roles:['Jimbo Customs','Executive']},
+ customs:{label:'🔧 Jimbo Customs Support',roles:['Jimbo Customs Staff','Executive']},
  fivem:{label:'🚓 FiveM Support',roles:['FiveM Admin','Executive']},
  dayz:{label:'🧟 DayZ Support',roles:['DayZ Admin','Executive']},
  aion2:{label:'⚔️ Aion2 Support',roles:['Aion2 Admin','Executive']},
