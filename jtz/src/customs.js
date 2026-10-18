@@ -168,39 +168,47 @@ const catalog={
   "monstertow"
  ]
 };
-export const customsCommand={name:'jtz-customs',description:'Set up the Jimbo Customs vehicle forums, role, chat, voice and support',default_member_permissions:P.Administrator.toString(),options:[{type:1,name:'preview',description:'Show planned Jimbo Customs setup'},{type:1,name:'apply',description:'Create Jimbo Customs forums and vehicle posts (does not move old channels)'}]};
+export const customsCommand={name:'jtz-customs',description:'Set up Jimbo Customs vehicle forums and posts',default_member_permissions:P.Administrator.toString(),options:[{type:1,name:'preview',description:'Preview Jimbo Customs catalog'},{type:1,name:'apply',description:'Import up to 12 missing vehicle posts per run'}]};
+const BATCH=12;
+const running=new Set();
 export function attachCustoms(client){client.on('interactionCreate',async i=>{
  if(!i.isChatInputCommand()||i.commandName!=='jtz-customs')return;
- if(!i.inGuild()||!i.memberPermissions?.has(P.Administrator))return i.reply({content:'Administrator required.',ephemeral:true});
+ if(!i.inGuild()||!i.memberPermissions?.has(P.Administrator))return i.reply({content:'Administrator required.',flags:64});
  const names=Object.keys(catalog),count=Object.values(catalog).reduce((n,a)=>n+a.length,0);
- if(i.options.getSubcommand()==='preview')return i.reply({content:'**Jimbo Customs preview**\n1 category, 2 roles, 3 text channels, 3 voice channels, '+names.length+' vehicle forums and '+count+' vehicle posts.\nForums: '+names.join(', ')+'\nExisting channels are NOT moved or deleted. Run /jtz-customs apply to create the new layout.',ephemeral:true});
- await i.deferReply({ephemeral:true});
+ if(i.options.getSubcommand()==='preview')return i.reply({content:'**Jimbo Customs**: '+names.length+' vehicle forums and '+count+' catalog posts. Import creates up to '+BATCH+' missing posts per run. Existing posts and old channels are preserved.',flags:64});
+ if(running.has(i.guildId))return i.reply({content:'A Jimbo Customs import is already running. Wait for it to finish.',flags:64});
+ running.add(i.guildId);
+ await i.deferReply({flags:64});
+ let made=0,posts=0,skipped=0,remaining=0,errors=[];
  try{
- const g=i.guild;await g.roles.fetch();await g.channels.fetch();const me=await g.members.fetchMe();
- if(!me.permissions.has([P.ManageChannels,P.ManageRoles,P.SendMessages,P.CreatePublicThreads]))throw Error('JTZ requires Manage Channels, Manage Roles, Send Messages, and Create Public Threads.');
- let role=g.roles.cache.find(r=>r.name==='Jimbo Customs'&&!r.managed);
- if(!role)role=await g.roles.create({name:'Jimbo Customs',color:0x0a9d9d,reason:'Jimbo Customs membership'});
- let staffRole=g.roles.cache.find(r=>r.name==='Jimbo Customs Staff'&&!r.managed);
- if(!staffRole)staffRole=await g.roles.create({name:'Jimbo Customs Staff',color:0x1b7a9a,reason:'Private Jimbo Customs ticket routing'});
- let category=g.channels.cache.find(c=>c.type===ChannelType.GuildCategory&&c.name==='🔧 JIMBO CUSTOMS');
- if(!category)category=await g.channels.create({name:'🔧 JIMBO CUSTOMS',type:ChannelType.GuildCategory,reason:'Jimbo Customs catalog'});
- const wanted=[...['jimbo-general','jimbo-support','jimbo-announcements'].map(name=>({name,type:ChannelType.GuildText})),...['Customs Lounge','Garage 1','Garage 2'].map(name=>({name,type:ChannelType.GuildVoice})),...names.map(name=>({name,type:ChannelType.GuildForum}))];
- if(wanted.length>50)throw Error('Discord category limit exceeded');
- let made=0,posts=0,skipped=0;
- for(const spec of wanted){
- let channel=g.channels.cache.find(c=>c.parentId===category.id&&c.name===spec.name&&c.type===spec.type);
- if(!channel){channel=await g.channels.create({...spec,parent:category.id,reason:'Jimbo Customs setup'});made++;}
- if(spec.type!==ChannelType.GuildForum)continue;
- // Existing forum posts are not modified. Look up active and archived posts to prevent duplicates.
- let existing=new Set();
- const active=await channel.threads.fetchActive().catch(()=>null);if(active)for(const t of active.threads.values())existing.add(t.name);
- let before;
- for(let page=0;page<20;page++){const archived=await channel.threads.fetchArchived({limit:100,...(before?{before}:{})}).catch(()=>null);if(!archived||!archived.threads.size)break;for(const t of archived.threads.values())existing.add(t.name);before=archived.threads.last()?.archiveTimestamp;if(!archived.hasMore)break;}
- for(const vehicle of catalog[spec.name]){
- if(existing.has(vehicle)){skipped++;continue;}
- await channel.threads.create({name:vehicle,message:{content:'**'+vehicle+'**\nJimbo Customs vehicle listing. Add vehicle photos, details and discussion in this post.'},reason:'Jimbo Customs catalog import'});posts++;
- }
- }
- await i.editReply('Jimbo Customs created: role '+role.name+', '+made+' new channels, '+posts+' vehicle posts ('+skipped+' already existed). Original vehicle channels were left untouched. Use Jimbo Customs for membership and Jimbo Customs Staff for private ticket access. Ticket department is available in JTZ.');
- }catch(e){console.error('JTZ Customs setup',e);await i.editReply('Jimbo Customs setup stopped: '+e.message+' (existing work was preserved).').catch(()=>{});}
+  const g=i.guild;await g.roles.fetch();await g.channels.fetch();
+  const me=await g.members.fetchMe();
+  if(!me.permissions.has([P.ManageChannels,P.ManageRoles,P.SendMessages,P.CreatePublicThreads]))throw Error('JTZ needs Manage Channels, Manage Roles, Send Messages and Create Public Threads.');
+  let role=g.roles.cache.find(r=>r.name==='Jimbo Customs'&&!r.managed);
+  if(!role)role=await g.roles.create({name:'Jimbo Customs',color:0x0a9d9d,reason:'Jimbo Customs membership'});
+  let staffRole=g.roles.cache.find(r=>r.name==='Jimbo Customs Staff'&&!r.managed);
+  if(!staffRole)staffRole=await g.roles.create({name:'Jimbo Customs Staff',color:0x1b7a9a,reason:'Jimbo Customs ticket routing'});
+  let category=g.channels.cache.find(c=>c.type===ChannelType.GuildCategory&&c.name==='🔧 JIMBO CUSTOMS');
+  if(!category)category=await g.channels.create({name:'🔧 JIMBO CUSTOMS',type:ChannelType.GuildCategory,reason:'Jimbo Customs catalog'});
+  const wanted=[...['jimbo-general','jimbo-support','jimbo-announcements'].map(name=>({name,type:ChannelType.GuildText})),...['Customs Lounge','Garage 1','Garage 2'].map(name=>({name,type:ChannelType.GuildVoice})),...names.map(name=>({name,type:ChannelType.GuildForum}))];
+  for(const spec of wanted){
+   let ch=g.channels.cache.find(c=>c.parentId===category.id&&c.name===spec.name&&c.type===spec.type);
+   if(!ch){try{ch=await g.channels.create({...spec,parent:category.id,reason:'Jimbo Customs setup'});made++;}catch(e){errors.push(spec.name+': '+e.message);continue;}}
+   if(spec.type!==ChannelType.GuildForum)continue;
+   let existing=new Set();
+   try{
+    const active=await ch.threads.fetchActive();for(const t of active.threads.values())existing.add(t.name);
+    const archived=await ch.threads.fetchArchived({limit:100});for(const t of archived.threads.values())existing.add(t.name);
+   }catch(e){errors.push(spec.name+' lookup: '+e.message);continue;}
+   for(const vehicle of catalog[spec.name]){
+    if(existing.has(vehicle)){skipped++;continue;}
+    if(posts>=BATCH){remaining++;continue;}
+    try{await ch.threads.create({name:vehicle,message:{content:'**'+vehicle+'**\nJimbo Customs vehicle listing. Add vehicle photos, details and discussion in this post.'},reason:'Jimbo Customs catalog import'});posts++;existing.add(vehicle);}
+    catch(e){errors.push(vehicle+': '+e.message);remaining++;}
+   }
+  }
+  const result='Jimbo Customs batch complete: **'+posts+' posts created**, '+made+' channels created, '+skipped+' existing posts skipped, '+remaining+' still missing.'+(errors.length?'\nErrors: '+errors.slice(0,4).join(' | '):'')+(remaining?'\nRun **/jtz-customs apply** again for the next batch.':'\nCatalog import complete for the configured list.')+'\nOriginal channels were not changed.';
+  await i.editReply(result);
+ }catch(e){console.error('JTZ Customs batch error',e);await i.editReply('Customs import stopped: '+e.message+'. Existing posts are preserved.').catch(console.error);}
+ finally{running.delete(i.guildId);}
 });}
