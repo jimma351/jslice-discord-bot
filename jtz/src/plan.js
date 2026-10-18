@@ -2,6 +2,7 @@ export const roles = ['FiveM', 'DayZ', 'Aion2', 'All Games', 'Announcements', 'S
 export const categories = [
   { name: '📢 WELCOME & INFORMATION', channels: ['welcome', 'rules', 'announcements', 'choose-your-games'] },
   { name: '❄️ ── [ANNOUNCEMENTS] ── ❄️', channels: ['📢・announcement', '🥺・ea-games-betas', '🏆・free-games', '🎁・giveaway', '🎟️・new-games-deals'] },
+  { name: '❄️ ── [CHATTING] ── ❄️', channels: ['👥・general-chatting', '🌎・random-pics', '📰・news', '🖥️・music', '🎮・gaming-chat', 'scrapbook'], voice: ['VC 1', 'VC 2', 'afk', 'Ⓚ-Ⓘ-Ⓞ-Ⓢ-', 'chilling'] },
   { name: '💬 NXGC COMMUNITY', channels: ['general', 'suggestions', 'open-a-ticket', 'verify-here'], voice: ['Chill 1', 'Chill 2', 'Chill 3', 'Coffee Room'] },
   { name: '📸 NXGC MEDIA', channels: ['irl-photos', 'irl-videos', 'game-screenshots', 'game-clips', 'memes'] },
   { name: '🚓 FIVEM ROLEPLAY', channels: ['fivem-announcements', 'fivem-general', 'fivem-chat', 'server-status', 'fivem-support', 'fivem-media'], roles: ['FiveM', 'All Games', 'FiveM Admin', 'Discord Staff', 'Lead Dev', 'Executive'], voice: ['FiveM Chill 1', 'FiveM Chill 2', 'FiveM Chill 3', 'FiveM Coffee'] },
