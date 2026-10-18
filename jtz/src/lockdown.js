@@ -4,7 +4,7 @@ import {isApproved} from './config.js';
 import {styledCategory,styledChannel} from './restyle.js';
 const P=PermissionFlagsBits;
 const publicNames=new Set(['welcome','rules','open-a-ticket','verify-here']);
-const protectedCategories=['💬 NXGC COMMUNITY','📸 NXGC MEDIA','🚓 FIVEM ROLEPLAY','🧟 DAYZ','⚔️ AION2'];
+const protectedCategories=['💬 Jimma Lounge COMMUNITY','📸 Jimma Lounge MEDIA','🚓 FIVEM ROLEPLAY','🧟 DAYZ','⚔️ AION2'];
 const publicExtras=new Set(['announcements','choose-your-games']);
 const games={'🚓 FIVEM ROLEPLAY':['FiveM','FiveM Access'],'🧟 DAYZ':['DayZ','DayZ Access'],'⚔️ AION2':['Aion2','Aion2 Access']};
 const match=(name,plain)=>name===plain||name===styledCategory(plain)||name===styledChannel(plain);
