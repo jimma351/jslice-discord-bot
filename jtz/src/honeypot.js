@@ -1,3 +1,4 @@
+import {isOwner} from './config.js';
 import {ChannelType,PermissionFlagsBits} from 'discord.js';
 import {isApproved} from './config.js';
 const P=PermissionFlagsBits;
@@ -35,6 +36,7 @@ export function attachHoneypot(client){
  });
  client.on('interactionCreate',async i=>{
   if(!i.isChatInputCommand()||i.commandName!=='jtz-honeypot')return;
+  if(!isOwner(i.user.id))return i.reply({content:'JTZ management is owner-only.',flags:64});
   if(!i.inGuild()||!isApproved(i.guildId))return i.reply({content:'Not an approved server.',ephemeral:true});
   if(!i.memberPermissions?.has(P.Administrator))return i.reply({content:'Administrator required.',ephemeral:true});
   await i.deferReply({ephemeral:true});
