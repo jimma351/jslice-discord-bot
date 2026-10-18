@@ -9,7 +9,7 @@ const category=(guild,name)=>guild.channels.cache.find(c=>c.type===ChannelType.G
 const send=async(channel,content)=>{if(channel)await channel.send({content,allowedMentions:{parse:[]}}).catch(e=>console.error('JTZ welcome/leave message:',e.message));};
 
 export const welcomeCommand={
- name:'jtz-welcome',description:'Configure NXGC welcome and private leave channels',
+ name:'jtz-welcome',description:'Configure Jimma Lounge welcome and private leave channels',
  default_member_permissions:PermissionFlagsBits.Administrator.toString(),
  options:[{type:1,name:'setup',description:'Create welcome and staff-only leave channels safely'}]
 };
@@ -17,11 +17,11 @@ export const welcomeCommand={
 export function attachWelcome(client){
  client.on('guildMemberAdd',async member=>{
   if(!isApproved(member.guild.id)||member.user.bot)return;
-  await send(locate(member.guild,'welcome'),'👋 **Welcome to NXGC, '+member.user.username.replaceAll('*','')+'!**\nGlad to have you here, <@'+member.id+'>. Please read the rules, visit verification, and choose your game roles.');
+  await send(locate(member.guild,'welcome'),'👋 **Welcome to Jimma Lounge, '+member.user.username.replaceAll('*','')+'!**\nGlad to have you here, <@'+member.id+'>. Please read the rules, visit verification, and choose your game roles.');
  });
  client.on('guildMemberRemove',async member=>{
   if(!isApproved(member.guild.id)||member.user.bot)return;
-  await send(locate(member.guild,'member-leaves'),'📤 **Member left NXGC**\nUser: '+member.user.tag+'\nID: '+member.id+'\nJoined: '+(member.joinedTimestamp?'<t:'+Math.floor(member.joinedTimestamp/1000)+':R>':'Unknown'));
+  await send(locate(member.guild,'member-leaves'),'📤 **Member left Jimma Lounge**\nUser: '+member.user.tag+'\nID: '+member.id+'\nJoined: '+(member.joinedTimestamp?'<t:'+Math.floor(member.joinedTimestamp/1000)+':R>':'Unknown'));
  });
  client.on('interactionCreate',async i=>{
   if(!i.isChatInputCommand()||i.commandName!=='jtz-welcome')return;
