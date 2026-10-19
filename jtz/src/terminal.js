@@ -7,11 +7,11 @@ import {gameChoices,switchGameRoles} from './game-roles.js';
 const P=PermissionFlagsBits;
 const hubArtwork="https://cdn.discordapp.com/attachments/1383300603748290597/1561537012610367509/Jimmas_Electric_Throne_Hub.png?ex=6ad6b62b&is=6ad564ab&hm=65ea7ddf4ef108f2926c1af9a55bde301cfffea79a6e85a87880dfdfff6ad456";
 
-const games=['FiveM','DayZ','Aion2'];
+const games=['FiveM','DayZ','Aion2','Jimbo Customs','Community'];
 const hasGame=(member,name)=>member.roles.cache.some(r=>r.name===name||r.name===name+' Access'||r.name==='All Games');
 const isVerified=m=>m.roles.cache.some(r=>r.name==='Verified');
 const isDev=m=>m.permissions.has(P.Administrator)||m.roles.cache.some(r=>['Developer','Lead Dev','Executive'].includes(r.name));
-const gameMenu=game=>new ActionRowBuilder().addComponents(new StringSelectMenuBuilder().setCustomId('jtzv2_game').setPlaceholder('🎮 Switch game roles & channels').addOptions(gameChoices.map(g=>({label:g,value:g,default:g===game,emoji:g==='FiveM'?'🚓':g==='DayZ'?'🧟':g==='Aion2'?'⚔️':'🌐'}))));
+const gameMenu=game=>new ActionRowBuilder().addComponents(new StringSelectMenuBuilder().setCustomId('jtzv2_game').setPlaceholder('🎮 Switch game roles & channels').addOptions(gameChoices.map(g=>({label:g,value:g,default:g===game,emoji:g==='FiveM'?'🚓':g==='DayZ'?'🧟':g==='Aion2'?'⚔️':g==='Jimbo Customs'?'🔧':g==='Community'?'💬':'🌐'}))));
 const channelLink=(member,name)=>{
  const channel=member.guild.channels.cache.find(c=>(c.name===name||c.name===styledChannel(name))&&c.permissionsFor(member)?.has(P.ViewChannel));
  return channel?'<#'+channel.id+'>':'the '+name+' channel';
@@ -39,7 +39,7 @@ const view=(member,game,tab)=>{
   .setFooter({text:'Jimma Lounge Hub • '+game+' • Your private player space'});
  const avatar=member.displayAvatarURL?.({size:256});
  if(avatar)embed.setThumbnail(avatar);
- if(tab==='dashboard')embed.setDescription('Choose a game below to switch your game roles and channels. **All Games** shows all three game areas. Community channels stay available; staff permissions may keep extra channels visible.').addFields(
+ if(tab==='dashboard')embed.setDescription('Choose a game below to switch your game roles and channels. **All Games** shows all three game areas. Jimbo Customs and Community have their own member roles. Community channels stay available; staff permissions may keep extra channels visible.').addFields(
   {name:'🎮 GAME SPACE',value:game,inline:true},
   {name:'🛡️ MEMBER STATUS',value:isVerified(member)?'Verified':'Administrator',inline:true},
   {name:'🔑 GAME ROLE',value:hasGame(member,game)?'Assigned':'Not assigned',inline:true},
