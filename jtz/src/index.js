@@ -94,7 +94,7 @@ client.on('interactionCreate', async interaction => {
  const action = interaction.options.getSubcommand();
  if (action === 'restyle-preview') return restyle(interaction,true);
  if (action === 'restyle-apply') return restyle(interaction,false);
- if (action === 'preview') return interaction.reply({content:'**Planned roles:** '+roles.join(', ')+'\n**Planned categories:** '+categories.map(c=>c.name+' ('+c.channels.join(', ')+(c.voice?.length?' | Voice: '+c.voice.join(', '):'')+')').join('\n'),ephemeral:true});
+ if (action === 'preview') { const plannedChannels=categories.reduce((n,c)=>n+c.channels.length+(c.voice?.length||0),0); const lines=categories.map(c=>'• '+c.name+' — '+c.channels.length+' text, '+(c.voice?.length||0)+' voice'); const pages=[];let page='';for(const line of lines){if((page+'\n'+line).length>1650){pages.push(page);page='';}page+=(page?'\n':'')+line;}if(page)pages.push(page);await interaction.deferReply({flags:64});await interaction.editReply('**JTZ setup preview — no changes made**\n'+roles.length+' roles, '+categories.length+' categories, '+plannedChannels+' channels planned.\n**Categories (page 1/'+pages.length+'):**\n'+pages[0]);for(let n=1;n<pages.length;n++)await interaction.followUp({content:'**JTZ setup preview ('+(n+1)+'/'+pages.length+')**\n'+pages[n],flags:64});return;}
  await interaction.deferReply({ephemeral:true});
  try {
   const guild = interaction.guild;
