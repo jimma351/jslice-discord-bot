@@ -188,6 +188,8 @@ export function attachCustoms(client){client.on('interactionCreate',async i=>{
   if(!me.permissions.has([P.ManageChannels,P.ManageRoles,P.SendMessages,P.CreatePublicThreads]))throw Error('JTZ needs Manage Channels, Manage Roles, Send Messages and Create Public Threads.');
   let role=g.roles.cache.find(r=>r.name==='Jimbo Customs'&&!r.managed);
   if(!role)role=await g.roles.create({name:'Jimbo Customs',color:0x0a9d9d,reason:'Jimbo Customs membership'});
+  let communityRole=g.roles.cache.find(r=>r.name==='Community'&&!r.managed);
+  if(!communityRole)communityRole=await g.roles.create({name:'Community',color:0x35b5a4,reason:'Jimma Lounge community member role'});
   let staffRole=g.roles.cache.find(r=>r.name==='Jimbo Customs Staff'&&!r.managed);
   if(!staffRole)staffRole=await g.roles.create({name:'Jimbo Customs Staff',color:0x1b7a9a,reason:'Jimbo Customs ticket routing'});
   let category=g.channels.cache.find(c=>c.type===ChannelType.GuildCategory&&c.name==='🔧 JIMBO CUSTOMS');
