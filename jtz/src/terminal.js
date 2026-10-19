@@ -1,12 +1,12 @@
 import {ActionRowBuilder,ButtonBuilder,ButtonStyle,EmbedBuilder,StringSelectMenuBuilder,PermissionFlagsBits,MessageFlags} from 'discord.js';
-import {fileURLToPath} from 'node:url';
+
 import {isApproved,isOwner} from './config.js';
 import {styledChannel} from './restyle.js';
 import {gameChoices,switchGameRoles} from './game-roles.js';
 
 const P=PermissionFlagsBits;
-const bannerPath=fileURLToPath(new URL('../assets/nexus-gaming-hub.png',import.meta.url));
-const bannerFile=()=>({attachment:bannerPath,name:'nexus-gaming-hub.png'});
+const hubArtwork="https://cdn.discordapp.com/attachments/1383300603748290597/1561537012610367509/Jimmas_Electric_Throne_Hub.png?ex=6ad6b62b&is=6ad564ab&hm=65ea7ddf4ef108f2926c1af9a55bde301cfffea79a6e85a87880dfdfff6ad456";
+
 const games=['FiveM','DayZ','Aion2'];
 const hasGame=(member,name)=>member.roles.cache.some(r=>r.name===name||r.name===name+' Access'||r.name==='All Games');
 const isVerified=m=>m.roles.cache.some(r=>r.name==='Verified');
@@ -35,7 +35,7 @@ const view=(member,game,tab)=>{
  const embed=new EmbedBuilder().setColor(tab==='bio'||tab==='dev'?0xa855f7:0x22d3ee)
   .setAuthor({name:member.displayName||member.user?.username||'Jimma Lounge Player'})
   .setTitle('JIMMA LOUNGE HUB • '+title).setDescription(description)
-  .setImage('attachment://nexus-gaming-hub.png')
+  .setImage(hubArtwork)
   .setFooter({text:'Jimma Lounge Hub • '+game+' • Your private player space'});
  const avatar=member.displayAvatarURL?.({size:256});
  if(avatar)embed.setThumbnail(avatar);
@@ -63,7 +63,7 @@ export function attachTerminal(client){
    if(panel){
     if(!isOwner(i.user.id))return i.reply({content:'JTZ management is owner-only.',flags:64});
     await i.deferReply({flags:MessageFlags.Ephemeral});
-    await i.channel.send({files:[bannerFile()],embeds:[new EmbedBuilder().setTitle('JIMMA LOUNGE HUB').setColor(0x22d3ee).setImage('attachment://nexus-gaming-hub.png').setDescription('Your personalized gaming hub. Open your dashboard, private support tickets, events, and developer tools. The terminal is private to each member.')],components:[new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('jtzv2_open').setLabel('Open My Terminal').setStyle(ButtonStyle.Primary))]});
+    await i.channel.send({embeds:[new EmbedBuilder().setTitle('JIMMA LOUNGE HUB').setColor(0x22d3ee).setImage(hubArtwork).setDescription('Your personalized gaming hub. Open your dashboard, private support tickets, events, and developer tools. The terminal is private to each member.')],components:[new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('jtzv2_open').setLabel('Open My Terminal').setStyle(ButtonStyle.Primary))]});
     return i.editReply({content:'Jimma Lounge Hub launch panel posted.'});
    }
    // Only update private terminal messages; the shared launch panel stays public.
@@ -80,7 +80,7 @@ export function attachTerminal(client){
    const game=member.roles.cache.some(r=>r.name==='All Games')?'All Games':owned.length===1?owned[0]:'Choose a game';
    const tab=btn&&i.customId!=='jtzv2_open'?i.customId.slice('jtzv2_'.length):'dashboard';
    if(tab==='dev'&&!isOwner(i.user.id))return i.editReply({content:'Owner-only area.',embeds:[],components:[]});
-   return await i.editReply({content:menu?'Game roles updated: **'+game+'**. Community channels stay available. Staff and administrator permissions can keep other channels visible.':null,attachments:[],files:[bannerFile()],embeds:[view(member,game,tab)],components:[gameMenu(game),nav(),...(isOwner(i.user.id)?[devNav()]:[]),...(tab==='bio'?[bioLink()]:[]),...(tab==='support'?[supportMenu(game)]:[])]});
+   return await i.editReply({content:menu?'Game roles updated: **'+game+'**. Community channels stay available. Staff and administrator permissions can keep other channels visible.':null,attachments:[],embeds:[view(member,game,tab)],components:[gameMenu(game),nav(),...(isOwner(i.user.id)?[devNav()]:[]),...(tab==='bio'?[bioLink()]:[]),...(tab==='support'?[supportMenu(game)]:[])]});
   }catch(e){
    console.error('JTZV2 terminal',e);
    const content='Terminal unavailable. Please try /jtz-hub again or contact staff.';
