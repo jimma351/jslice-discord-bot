@@ -16,6 +16,7 @@ export const rebuildCommand = {
    options:[{type:3,name:'code',description:'One-time code from /jtz-rebuild preview',required:true}]}
  ]
 };
+const protectedIds = guild => new Set([guild.rulesChannelId,guild.publicUpdatesChannelId,guild.systemChannelId,guild.safetyAlertsChannelId].filter(Boolean));
 const snapshot = guild => [...guild.channels.cache.values()]
  .map(c=>({id:c.id,name:c.name,type:c.type,parentId:c.parentId||''}))
  .sort((a,b)=>a.id.localeCompare(b.id));
@@ -41,20 +42,22 @@ export function attachRebuild(client) {
   try {
    await guild.channels.fetch();
    const current=snapshot(guild);
+   const protectedChannels=protectedIds(guild);
+   const removable=current.filter(c=>!protectedChannels.has(c.id));
    const action=i.options.getSubcommand();
    if(action==='preview'){
     const code=String(randomInt(100000,1000000));
-    previews.set(guild.id,{owner:i.user.id,code,expires:Date.now()+EXPIRY,signature:signature(current)});
+    previews.set(guild.id,{owner:i.user.id,code,expires:Date.now()+EXPIRY,signature:signature(current),protectedSignature:[...protectedChannels].sort().join(',')});
     const count=categories.reduce((n,c)=>n+c.channels.length+(c.voice?.length||0),0);
-    const lines=current.map(c=>(c.type===ChannelType.GuildCategory?'📁 ':c.type===ChannelType.GuildForum?'🗂️ ':c.type===ChannelType.GuildVoice?'🔊 ':'# ')+c.name+' ('+c.id+')');
-    await sendPages(i,'**JIMMA LOUNGE — DESTRUCTIVE REBUILD PREVIEW**\n'+current.length+' existing channels/categories would be permanently deleted, including their messages, attachments, threads and forum posts.\nReplacement: '+roles.length+' roles, '+categories.length+' categories, '+count+' text/voice channels; Jimbo Customs forums and catalog are imported separately using /jtz-customs apply.\n**Nothing has been changed.**\n\n**One-time code: '+code+'** (expires in 10 minutes). Only confirm after reviewing ALL pages.\n**Channels slated for deletion:**',lines);
+    const lines=current.map(c=>(protectedChannels.has(c.id)?'🔒 PRESERVED (Discord protected) ':'🗑️ DELETE ')+(c.type===ChannelType.GuildCategory?'📁 ':c.type===ChannelType.GuildForum?'🗂️ ':c.type===ChannelType.GuildVoice?'🔊 ':'# ')+c.name+' ('+c.id+')');
+    await sendPages(i,'**JIMMA LOUNGE — DESTRUCTIVE REBUILD PREVIEW**\n'+removable.length+' existing channels/categories would be permanently deleted, including their messages, attachments, threads and forum posts. '+protectedChannels.size+' configured Discord system/Community channels will be preserved. These cannot safely be deleted while assigned in server settings.\nReplacement: '+roles.length+' roles, '+categories.length+' categories, '+count+' text/voice channels; Jimbo Customs forums and catalog are imported separately using /jtz-customs apply.\n**Nothing has been changed.**\n\n**One-time code: '+code+'** (expires in 10 minutes). Only confirm after reviewing ALL pages.\n**Channels slated for deletion:**',lines);
     return;
    }
    const code=i.options.getString('code',true);
    const approval=previews.get(guild.id);
    if(!approval||approval.owner!==i.user.id||approval.code!==code||Date.now()>approval.expires)
     return i.editReply('Confirmation refused: missing, expired, or incorrect preview code. Run /jtz-rebuild preview again.');
-   if(signature(current)!==approval.signature)
+   if(signature(current)!==approval.signature||[...protectedChannels].sort().join(',')!==approval.protectedSignature)
     return i.editReply('Confirmation refused: channels changed since preview. Run /jtz-rebuild preview again.');
    const me=await guild.members.fetchMe();
    if(!me.permissions.has([P.ManageChannels,P.ManageRoles]))
@@ -73,11 +76,11 @@ export function attachRebuild(client) {
    }
    let deleted=0,created=0;
    const failures=[];
-   for(const c of current.filter(c=>c.type!==ChannelType.GuildCategory)){
+   for(const c of removable.filter(c=>c.type!==ChannelType.GuildCategory)){
     try{const ch=await guild.channels.fetch(c.id).catch(()=>null);if(ch){await ch.delete('Owner-confirmed Jimma Lounge rebuild');deleted++;}}
     catch(e){failures.push('Delete '+c.name+': '+e.message);break;}
    }
-   if(!failures.length)for(const c of current.filter(c=>c.type===ChannelType.GuildCategory)){
+   if(!failures.length)for(const c of removable.filter(c=>c.type===ChannelType.GuildCategory)){
     try{const ch=await guild.channels.fetch(c.id).catch(()=>null);if(ch){await ch.delete('Owner-confirmed Jimma Lounge rebuild');deleted++;}}
     catch(e){failures.push('Delete '+c.name+': '+e.message);break;}
    }
@@ -95,7 +98,7 @@ export function attachRebuild(client) {
      }
     }catch(e){failures.push(spec.name+': '+e.message);break;}
    }
-   await i.editReply('Jimma Lounge rebuild '+(failures.length?'stopped with an error':'finished')+'. Deleted '+deleted+' old channels/categories; created '+created+' new channels/categories.'+(failures.length?' Error: '+failures[0]:'')+'\nNext: /jtz-customs apply (repeat in batches for vehicle forum posts). Review permissions, onboarding, and welcome/ticket panels.');
+   await i.editReply('Jimma Lounge rebuild '+(failures.length?'stopped with an error':'finished')+'. Deleted '+deleted+' old channels/categories; created '+created+' new channels/categories.'+(failures.length?' Error: '+failures[0]:'')+'\nProtected Discord system/Community channels were preserved. Next: /jtz-customs apply (repeat in batches for vehicle forum posts). Review permissions, onboarding, and welcome/ticket panels.');
   }catch(e){console.error('JTZ rebuild failed',e);await i.editReply('Rebuild error: '+e.message).catch(console.error);}
   finally{running.delete(guild.id);}
  });
