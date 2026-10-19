@@ -1,11 +1,11 @@
 import {PermissionFlagsBits as P} from 'discord.js';
 
-export const gameChoices=['FiveM','DayZ','Aion2','All Games'];
+export const gameChoices=['FiveM','DayZ','Aion2','All Games','Jimbo Customs','Community'];
 const gameRoleNames=new Set([...gameChoices,'FiveM Access','DayZ Access','Aion2 Access']);
 const changing=new Set();
 
 export async function switchGameRoles(guild,userId,choice) {
- if(!gameChoices.includes(choice))throw new Error('Choose FiveM, DayZ, Aion2, or All Games.');
+ if(!gameChoices.includes(choice))throw new Error('Choose a game, Jimbo Customs, or Community.');
  const key=guild.id+':'+userId;
  if(changing.has(key))throw new Error('Your game roles are still updating. Please try again in a moment.');
  changing.add(key);
