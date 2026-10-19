@@ -1,4 +1,4 @@
-export const roles = ['FiveM', 'DayZ', 'Aion2', 'All Games', 'Announcements', 'Staff', 'Discord Staff', 'Admin', 'Developer', 'Lead Dev', 'FiveM Admin', 'DayZ Admin', 'Aion2 Admin', 'Executive', 'Unverified', 'Verified'];
+export const roles = ['FiveM', 'DayZ', 'Aion2', 'All Games', 'Announcements', 'Staff', 'Discord Staff', 'Admin', 'Developer', 'Lead Dev', 'FiveM Admin', 'DayZ Admin', 'Aion2 Admin', 'Executive', 'Unverified', 'Verified', 'Jimbo Customs', 'Community'];
 export const categories = [
   { name: '📢 WELCOME & INFORMATION', channels: ['welcome', 'rules', 'announcements', 'choose-your-games'] },
   { name: '❄️ ── [ANNOUNCEMENTS] ── ❄️', channels: ['📢・announcement', '🥺・ea-games-betas', '🏆・free-games', '🎁・giveaway', '🎟️・new-games-deals'] },
