@@ -20,7 +20,7 @@ const snapshot = guild => [...guild.channels.cache.values()]
  .map(c=>({id:c.id,name:c.name,type:c.type,parentId:c.parentId||''}))
  .sort((a,b)=>a.id.localeCompare(b.id));
 const signature = items => JSON.stringify(items);
-const paginate = (lines,limit=1700) => {
+const paginate = (lines,limit=1050) => {
  const pages=[];let page='';
  for(const line of lines){if((page+'\n'+line).length>limit){if(page)pages.push(page);page='';}page+=(page?'\n':'')+line;}
  if(page)pages.push(page);return pages.length?pages:['(none)'];
