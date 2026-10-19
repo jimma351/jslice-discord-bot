@@ -49,12 +49,12 @@ const view=(member,game,tab)=>{
   {name:'EXPLORE YOUR HUB',value:'**Player Bio** · Customizable gaming profile\n**Support** · Open a private ticket\n**Events** · Community updates\n**Dev Center** · Development access'});
  return embed;
 };
-export const terminalCommand={name:'jtz-terminal',description:'Open your private Jimma Lounge Hub player terminal'};
+export const terminalCommand={name:'jtz-hub',description:'Open your private Jimma Lounge Hub player terminal'};
 export const terminalAdminCommand={name:'jtzv2-panel',description:'Post the Jimma Lounge Hub Player Terminal launch button',default_member_permissions:P.Administrator.toString()};
 export function attachTerminal(client){
  client.on('interactionCreate',async i=>{
   if(!i.inGuild()||!isApproved(i.guildId))return;
-  const open=i.isChatInputCommand()&&i.commandName==='jtz-terminal';
+  const open=i.isChatInputCommand()&&i.commandName==='jtz-hub';
   const panel=i.isChatInputCommand()&&i.commandName==='jtzv2-panel';
   const btn=i.isButton()&&['open','dashboard','bio','support','events','dev'].some(tab=>i.customId==='jtzv2_'+tab);
   const menu=i.isStringSelectMenu()&&i.customId==='jtzv2_game';
@@ -83,7 +83,7 @@ export function attachTerminal(client){
    return await i.editReply({content:menu?'Game roles updated: **'+game+'**. Community channels stay available. Staff and administrator permissions can keep other channels visible.':null,attachments:[],files:[bannerFile()],embeds:[view(member,game,tab)],components:[gameMenu(game),nav(),...(isOwner(i.user.id)?[devNav()]:[]),...(tab==='bio'?[bioLink()]:[]),...(tab==='support'?[supportMenu(game)]:[])]});
   }catch(e){
    console.error('JTZV2 terminal',e);
-   const content='Terminal unavailable. Please try /jtz-terminal again or contact staff.';
+   const content='Terminal unavailable. Please try /jtz-hub again or contact staff.';
    if(i.deferred||i.replied)await i.editReply({content,embeds:[],components:[]}).catch(()=>{});
    else await i.reply({content,flags:MessageFlags.Ephemeral}).catch(()=>{});
   }
